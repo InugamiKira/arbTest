@@ -127,6 +127,17 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
     latest_calibration_factor = 0.0
     latest_exchange_rate = 0.0
     
+    # 获取真正的今日汇率（严禁使用历史数据替代）
+    today_exchange_rate_float = 0.0
+    if basic_df is not None and not basic_df.empty:
+        latest_er = basic_df.iloc[0].get('人民币中间价', 0)
+        if pd.notna(latest_er) and latest_er != '':
+            try:
+                if float(latest_er) > 0:
+                    today_exchange_rate_float = float(latest_er)
+            except:
+                pass
+
     # 根据基金类别设置校准因子
     if category == '黄金':
         latest_calibration_factor = gold_calibration
@@ -575,17 +586,20 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                     if future_price > 0 and nav_home > 0:
                         # 找到基准日期的汇率
                         base_date = None
-                        base_exchange_rate = 7.1  # 默认汇率
+                        base_exchange_rate = 0.0
                         for _, row in lof_df_sorted.iterrows():
                             if row.get('nav', 0) > 0 and row.get('exchange_rate', 0) > 0:
                                 base_date = row['date']
                                 base_exchange_rate = row['exchange_rate']
                                 break
                         
-                        # 获取当前汇率
-                        current_exchange_rate = base_exchange_rate
-                        if l_r.get('exchange_rate', 0) > 0:
-                            current_exchange_rate = l_r['exchange_rate']
+                        if base_exchange_rate <= 0:
+                            continue # 没有找到基准汇率，严禁使用固定值，强制熔断
+                        
+                        # 严禁降级！获取当期真实汇率，若无则熔断
+                        current_exchange_rate = today_exchange_rate_float
+                        if current_exchange_rate <= 0:
+                            continue
                         
                         # 计算汇率变化率
                         exchange_rate_change = current_exchange_rate / base_exchange_rate
@@ -645,31 +659,52 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                         # 新增：精准期货估值 (利用 T-1 期货收盘价)
                         if futures_history_df is not None and not futures_history_df.empty and base_date is not None:
                             base_date_str = base_date.strftime('%Y-%m-%d') if isinstance(base_date, pd.Timestamp) else str(base_date)[:10]
-                            if base_date_str in futures_history_df.index:
+                            
+                            # 优先从 basic_df (011脚本产物) 读取结算价，确保与JS沙盘口径一致
+                            base_future_price = 0.0
+                            if not basic_df.empty:
+                                settle_col = 'GC_settle'
+                                for _, row in basic_df.iterrows():
+                                    row_date = row.get('date')
+                                    if pd.isna(row_date): continue
+                                    row_date_str_basic = row_date.strftime('%Y-%m-%d') if isinstance(row_date, pd.Timestamp) else str(row_date)[:10]
+                                    if row_date_str_basic == base_date_str:
+                                        val = row.get(settle_col)
+                                        if pd.notna(val) and val != '':
+                                            base_future_price = float(val)
+                                        break
+
+                            # 如果 basic_df 中没有，则降级到 futures_history.csv
+                            if base_future_price <= 0 and base_date_str in futures_history_df.index:
                                 val = futures_history_df.loc[base_date_str].get('GC_close', 0.0)
                                 if isinstance(val, pd.Series): val = val.iloc[0]
                                 base_future_price = float(val) if pd.notna(val) else 0.0
-                                if base_future_price > 0:
-                                    future_change_rate = future_price / base_future_price
-                                    net_value_change_ratio_exact = pos_float * (future_change_rate * exchange_rate_change - 1)
-                                    exact_future_valuation = nav_home * (1 + net_value_change_ratio_exact)
-                                    if latest_valid_close > 0 and exact_future_valuation > 0:
-                                        exact_future_premium = (latest_valid_close - exact_future_valuation) / exact_future_valuation * 100
+
+                            if base_future_price > 0:
+                                future_change_rate = future_price / base_future_price
+                                net_value_change_ratio_exact = pos_float * (future_change_rate * exchange_rate_change - 1)
+                                exact_future_valuation = nav_home * (1 + net_value_change_ratio_exact)
+                                if latest_valid_close > 0 and exact_future_valuation > 0:
+                                    exact_future_premium = (latest_valid_close - exact_future_valuation) / exact_future_valuation * 100
                 
                 elif category == '原油' and 'CL' in futures_data:
                     future_price = futures_data['CL']['price']
                     if future_price > 0 and nav_home > 0:
                         base_date = None
-                        base_exchange_rate = 7.1
+                        base_exchange_rate = 0.0
                         for _, row in lof_df_sorted.iterrows():
                             if row.get('nav', 0) > 0 and row.get('exchange_rate', 0) > 0:
                                 base_date = row['date']
                                 base_exchange_rate = row['exchange_rate']
                                 break
                         
-                        current_exchange_rate = base_exchange_rate
-                        if l_r.get('exchange_rate', 0) > 0:
-                            current_exchange_rate = l_r['exchange_rate']
+                        if base_exchange_rate <= 0:
+                            continue # 没有找到基准汇率，严禁使用固定值，强制熔断
+                        
+                        # 严禁降级！获取当期真实汇率，若无则熔断
+                        current_exchange_rate = today_exchange_rate_float
+                        if current_exchange_rate <= 0:
+                            continue
                         
                         exchange_rate_change = current_exchange_rate / base_exchange_rate
                         futures_etf = future_price / oil_calib
@@ -719,47 +754,81 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                         # 新增：精准期货估值 (利用 T-1 期货收盘价)
                         if futures_history_df is not None and not futures_history_df.empty and base_date is not None:
                             base_date_str = base_date.strftime('%Y-%m-%d') if isinstance(base_date, pd.Timestamp) else str(base_date)[:10]
-                            if base_date_str in futures_history_df.index:
+                            
+                            base_future_price = 0.0
+                            if not basic_df.empty:
+                                settle_col = 'CL_settle'
+                                for _, row in basic_df.iterrows():
+                                    row_date = row.get('date')
+                                    if pd.isna(row_date): continue
+                                    row_date_str_basic = row_date.strftime('%Y-%m-%d') if isinstance(row_date, pd.Timestamp) else str(row_date)[:10]
+                                    if row_date_str_basic == base_date_str:
+                                        val = row.get(settle_col)
+                                        if pd.notna(val) and val != '':
+                                            base_future_price = float(val)
+                                        break
+
+                            if base_future_price <= 0 and base_date_str in futures_history_df.index:
                                 val = futures_history_df.loc[base_date_str].get('CL_close', 0.0)
                                 if isinstance(val, pd.Series): val = val.iloc[0]
                                 base_future_price = float(val) if pd.notna(val) else 0.0
-                                if base_future_price > 0:
-                                    future_change_rate = future_price / base_future_price
-                                    net_value_change_ratio_exact = pos_float * (future_change_rate * exchange_rate_change - 1)
-                                    exact_future_valuation = nav_home * (1 + net_value_change_ratio_exact)
-                                    if latest_valid_close > 0 and exact_future_valuation > 0:
-                                        exact_future_premium = (latest_valid_close - exact_future_valuation) / exact_future_valuation * 100
+
+                            if base_future_price > 0:
+                                future_change_rate = future_price / base_future_price
+                                net_value_change_ratio_exact = pos_float * (future_change_rate * exchange_rate_change - 1)
+                                exact_future_valuation = nav_home * (1 + net_value_change_ratio_exact)
+                                if latest_valid_close > 0 and exact_future_valuation > 0:
+                                    exact_future_premium = (latest_valid_close - exact_future_valuation) / exact_future_valuation * 100
                 
                 elif category == '指数' and future_symbol and future_symbol in futures_data:
                     future_price = futures_data[future_symbol]['price']
                     if future_price > 0 and nav_home > 0:
                         base_date = None
-                        base_exchange_rate = 7.1
+                        base_exchange_rate = 0.0
                         for _, row in lof_df_sorted.iterrows():
                             if row.get('nav', 0) > 0 and row.get('exchange_rate', 0) > 0:
                                 base_date = row['date']
                                 base_exchange_rate = row['exchange_rate']
                                 break
                         
-                        current_exchange_rate = base_exchange_rate
-                        if l_r.get('exchange_rate', 0) > 0:
-                            current_exchange_rate = l_r['exchange_rate']
+                        if base_exchange_rate <= 0:
+                            continue # 没有找到基准汇率，严禁使用固定值，强制熔断
+                        
+                        # 严禁降级！获取当期真实汇率，若无则熔断
+                        current_exchange_rate = today_exchange_rate_float
+                        if current_exchange_rate <= 0:
+                            continue
                         
                         exchange_rate_change = current_exchange_rate / base_exchange_rate
                         
                         # 指数只有精准纯期货实时估值，不需要校准值
                         if futures_history_df is not None and not futures_history_df.empty and base_date is not None:
                             base_date_str = base_date.strftime('%Y-%m-%d') if isinstance(base_date, pd.Timestamp) else str(base_date)[:10]
-                            if base_date_str in futures_history_df.index:
+                            
+                            base_future_price = 0.0
+                            if not basic_df.empty:
+                                settle_col = f'{future_symbol}_settle'
+                                for _, row in basic_df.iterrows():
+                                    row_date = row.get('date')
+                                    if pd.isna(row_date): continue
+                                    row_date_str_basic = row_date.strftime('%Y-%m-%d') if isinstance(row_date, pd.Timestamp) else str(row_date)[:10]
+                                    if row_date_str_basic == base_date_str:
+                                        val = row.get(settle_col)
+                                        if pd.notna(val) and val != '':
+                                            base_future_price = float(val)
+                                        break
+
+                            if base_future_price <= 0 and base_date_str in futures_history_df.index:
                                 val = futures_history_df.loc[base_date_str].get(f'{future_symbol}_close', 0.0)
                                 if isinstance(val, pd.Series): val = val.iloc[0]
                                 base_future_price = float(val) if pd.notna(val) else 0.0
-                                if base_future_price > 0:
-                                    future_change_rate = future_price / base_future_price
-                                    net_value_change_ratio_exact = pos_float * (future_change_rate * exchange_rate_change - 1)
-                                    exact_future_valuation = nav_home * (1 + net_value_change_ratio_exact)
-                                    if latest_valid_close > 0 and exact_future_valuation > 0:
-                                        exact_future_premium = (latest_valid_close - exact_future_valuation) / exact_future_valuation * 100
+
+                            if base_future_price > 0:
+                                future_change_rate = future_price / base_future_price
+                                net_value_change_ratio_exact = pos_float * (future_change_rate * exchange_rate_change - 1)
+                                exact_future_valuation = nav_home * (1 + net_value_change_ratio_exact)
+                                if latest_valid_close > 0 and exact_future_valuation > 0:
+                                    exact_future_premium = (latest_valid_close - exact_future_valuation) / exact_future_valuation * 100
                 
         except Exception as e:
             print(f"获取期货数据失败: {e}")
@@ -1902,7 +1971,9 @@ def generate(futures_data=None, ib_data=None):
                     var match = exchangeRateElement.textContent.match(/汇率: ([\d.]+)/);
                     if (match) todayExchangeRate = parseFloat(match[1]);
                 }
-                if (!todayExchangeRate || todayExchangeRate <= 0) return 0;
+                if (!todayExchangeRate || todayExchangeRate <= 0) {
+                    return 0; // 彻底没有有效汇率，强制熔断返回0
+                }
                 
                 var weightedEtfChangeRate = 0;
                 var hasValidData = false;
@@ -2945,12 +3016,22 @@ def generate(futures_data=None, ib_data=None):
                     var match = exchangeRateElement.textContent.match(/汇率: ([\d.]+)/);
                     if (match) todayExchangeRate = parseFloat(match[1]);
                 }
-                if (!todayExchangeRate || todayExchangeRate <= 0) return;
 
                 Object.keys(window.fundBaseData).forEach(function(code) {
                     var baseData = window.fundBaseData[code];
                     if (!baseData || !baseData.position) return;
-                    var futPrice = 0;
+
+                // 汇率获取：优先用实时，失败则降级到该基金自己的历史汇率
+                var effectiveExchangeRate = todayExchangeRate;
+                if (!effectiveExchangeRate || effectiveExchangeRate <= 0) {
+                    if (baseData && baseData.latestExchangeRate) {
+                        effectiveExchangeRate = baseData.latestExchangeRate;
+                    } else {
+                        return; // 彻底没有汇率，放弃此基金的计算
+                    }
+                }
+
+                var futPrice = 0;
                     if (baseData.futureSymbol === 'GC') futPrice = gcPrice;
                     else if (baseData.futureSymbol === 'CL') futPrice = clPrice;
                     else if (baseData.futureSymbol === 'NQ') futPrice = nqPrice;
@@ -2961,7 +3042,7 @@ def generate(futures_data=None, ib_data=None):
                         return;
                     }
                     
-                    var fxChange = todayExchangeRate / baseData.baseExchangeRate;
+                var fxChange = todayExchangeRate / baseData.baseExchangeRate;
                     
                     var staticValuation = 0;
                     var allRows = document.querySelectorAll('#page-home tbody tr');
@@ -3068,6 +3149,10 @@ def generate(futures_data=None, ib_data=None):
                         if (data.rate) {
                             var el = document.getElementById('exchange-rate-display');
                             if (el) el.textContent = '汇率: ' + data.rate.toFixed(4);
+                        
+                            // 获取到有效汇率后，自动隐藏警告条
+                            var warnEl = document.getElementById('exchange-rate-warning');
+                            if (warnEl) warnEl.style.display = 'none';
                             
                             // 获取浏览器本地当前的日期 (格式: YYYY-MM-DD)
                             var d = new Date();

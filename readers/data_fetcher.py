@@ -2,6 +2,20 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta
 import logging
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+import time
+import re
+import sys
+import os
+
+# 添加项目根目录到Python路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 导入Woody网页爬虫
+from LOF013_woody_web_crawler import WoodyWebCrawler
 
 # 禁用urllib3的警告
 requests.packages.urllib3.disable_warnings()
@@ -25,9 +39,14 @@ class DataFetcher:
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin"
         }
+        # 初始化Woody网页爬虫
+        self.woody_crawler = WoodyWebCrawler()
     
     def fetch_official_exchange_rate(self, date=None):
-        """从国家外汇管理局获取指定日期的人民币中间价"""
+        """从国家外汇管理局获取指定日期的人民币中间价，失败时回退到Woody网页"""
+        logger.info("从国家外汇管理局获取人民币中间价")
+        
+        # 1. 尝试从国家外汇管理局获取
         url = "https://www.chinamoney.com.cn/r/cms/www/chinamoney/data/fx/ccpr.json"
         try:
             response = requests.get(url, headers=self.headers, proxies={}, timeout=30, verify=False)
@@ -54,17 +73,42 @@ class DataFetcher:
                         currency_name = record['vrtName']
                         rate = record['price']
                         if '美元' in currency_name or 'USD' in currency_name:
-                            logger.info(f"{currency_name}: {rate}")
-                            return {'日期': date_info.split(' ')[0], '人民币中间价': float(rate)}
-            logger.error(f"获取汇率数据失败，状态码: {response.status_code}")
+                            logger.info(f"国家外汇管理局 - {currency_name}: {rate}")
+                            return {
+                                '日期': date_info.split(' ')[0], 
+                                '人民币中间价': float(rate),
+                                '来源': '国家外汇管理局'
+                            }
+            logger.error(f"国家外汇管理局获取汇率数据失败，状态码: {response.status_code}")
         except Exception as e:
-            logger.error(f"获取汇率数据失败: {e}")
+            logger.error(f"国家外汇管理局获取汇率数据失败: {e}")
+        
+        # 2. 回退到Woody网页
+        logger.info("国家外汇管理局获取失败，尝试从Woody网页获取")
+        try:
+            woody_rates = self.woody_crawler.get_woody_exchange_rates()
+            if woody_rates and 'USCNY' in woody_rates:
+                uscnny_data = woody_rates['USCNY']
+                current_date = datetime.now().date().strftime('%Y-%m-%d')
+                logger.info(f"Woody网页 - 人民币中间价: {uscnny_data['rate']} (时间: {uscnny_data['time']})")
+                return {
+                    '日期': current_date,
+                    '人民币中间价': uscnny_data['rate'],
+                    '来源': 'Woody网页'
+                }
+        except Exception as e:
+            logger.error(f"Woody网页获取汇率数据失败: {e}")
+        
         return None
 
     def fetch_cny_spot_rate(self):
-        """从新浪财经获取人民币在岸价（CNY）实时汇率"""
+        """从新浪财经获取人民币在岸价（CNY）实时汇率
+        
+        优先使用API接口，失败时自动回退到网页爬取，最后回退到Woody网页
+        """
         logger.info("从新浪财经获取人民币在岸价实时汇率")
         
+        # 1. 尝试使用API接口
         try:
             # 新浪财经的在岸人民币汇率接口
             url = "https://hq.sinajs.cn/list=fx_susdcny"
@@ -91,7 +135,7 @@ class DataFetcher:
                         currency_pair = values[9]      # 货币对
                         date = values[17]              # 日期
                         
-                        logger.info(f"人民币在岸价: {spot_rate} (更新时间: {time})")
+                        logger.info(f"API接口 - 人民币在岸价: {spot_rate} (更新时间: {time})")
                         return {
                             '日期': date,
                             '时间': time,
@@ -101,11 +145,82 @@ class DataFetcher:
                             '买入价': buy_rate,
                             '卖出价': sell_rate,
                             '成交量': volume,
-                            '货币对': currency_pair
+                            '货币对': currency_pair,
+                            '来源': 'API接口'
                         }
-            logger.error(f"获取人民币在岸价失败，状态码: {response.status_code}")
+            logger.error(f"API接口获取人民币在岸价失败，状态码: {response.status_code}")
         except Exception as e:
-            logger.error(f"获取人民币在岸价失败: {e}")
+            logger.error(f"API接口获取人民币在岸价失败: {e}")
+        
+        # 2. API失败，回退到Selenium网页爬取
+        logger.info("API接口失败，尝试使用Selenium网页爬取")
+        try:
+            # 配置Chrome选项
+            chrome_options = Options()
+            chrome_options.add_argument('--headless')  # 无头模式，不显示浏览器
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36')
+            
+            # 启动浏览器
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            
+            try:
+                # 打开目标网页
+                url = "https://finance.sina.com.cn/money/forex/hq/USDCNY.shtml"
+                logger.info(f"打开网页: {url}")
+                driver.get(url)
+                
+                # 等待页面加载完成
+                time.sleep(5)  # 等待页面完全加载
+                
+                # 执行JavaScript获取页面中的所有文本内容
+                page_text = driver.execute_script("return document.body.innerText")
+                
+                # 查找符合汇率格式的数字
+                matches = re.findall(r'\b6\.\d{4}\b', page_text)
+                if matches:
+                    # 选择第一个匹配结果
+                    spot_rate = float(matches[0])
+                    current_time = datetime.now().strftime('%H:%M:%S')
+                    current_date = datetime.now().date().strftime('%Y-%m-%d')
+                    
+                    logger.info(f"Selenium网页爬取 - 人民币在岸价: {spot_rate} (爬取时间: {current_time})")
+                    return {
+                        '日期': current_date,
+                        '时间': current_time,
+                        '人民币在岸价': spot_rate,
+                        '来源': 'Selenium网页爬取'
+                    }
+                else:
+                    logger.error("Selenium网页爬取未能提取在岸价")
+            except Exception as e:
+                logger.error(f"Selenium网页爬取失败: {e}")
+            finally:
+                driver.quit()
+        except Exception as e:
+            logger.error(f"Selenium初始化失败: {e}")
+        
+        # 3. Selenium失败，回退到Woody网页
+        logger.info("Selenium网页爬取失败，尝试从Woody网页获取")
+        try:
+            woody_rates = self.woody_crawler.get_woody_exchange_rates()
+            if woody_rates and 'USDCNY' in woody_rates:
+                usdcny_data = woody_rates['USDCNY']
+                current_date = datetime.now().date().strftime('%Y-%m-%d')
+                logger.info(f"Woody网页 - 人民币在岸价: {usdcny_data['rate']} (时间: {usdcny_data['time']})")
+                return {
+                    '日期': current_date,
+                    '时间': usdcny_data['time'],
+                    '人民币在岸价': usdcny_data['rate'],
+                    '来源': 'Woody网页'
+                }
+        except Exception as e:
+            logger.error(f"Woody网页获取汇率数据失败: {e}")
+        
         return None
     
     def fetch_lof_nav_data(self, fund_code, existing_data=None):

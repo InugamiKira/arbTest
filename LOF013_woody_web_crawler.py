@@ -779,3 +779,65 @@ class WoodyWebCrawler:
         else:
             return 'other'
     
+    def get_woody_exchange_rates(self):
+        """从Woody网页爬取汇率数据，包括中间价和在岸价"""
+        print("\n=== woody网页爬取汇率数据 ===")
+        
+        exchange_rates = {}
+        
+        # 使用SZ159518的页面，因为它包含汇率数据
+        url = "https://palmmicro.com/woody/res/sz159518cn.php"
+        
+        try:
+            response = requests.get(url, headers=self.woody_headers, timeout=15, verify=False)
+            if response.status_code == 200:
+                response.encoding = response.apparent_encoding
+                page_text = response.text
+                
+                # 使用BeautifulSoup解析HTML
+                soup = BeautifulSoup(page_text, 'html.parser')
+                
+                # 查找包含汇率数据的表格
+                tables = soup.find_all('table')
+                for table in tables:
+                    rows = table.find_all('tr')
+                    for row in rows:
+                        cols = row.find_all('td')
+                        if len(cols) >= 6:
+                            code = cols[0].text.strip()
+                            price = cols[1].text.strip()
+                            time = cols[4].text.strip()
+                            name = cols[5].text.strip()
+                            
+                            if code == 'USDCNY':
+                                try:
+                                    exchange_rates['USDCNY'] = {
+                                        'rate': float(price),
+                                        'time': time,
+                                        'name': name
+                                    }
+                                    print(f"  [OK] 在岸人民币(USDCNY): {price} (时间: {time})")
+                                except ValueError:
+                                    pass
+                            elif code == 'USCNY':
+                                try:
+                                    exchange_rates['USCNY'] = {
+                                        'rate': float(price),
+                                        'time': time,
+                                        'name': name
+                                    }
+                                    print(f"  [OK] 人民币中间价(USCNY): {price} (时间: {time})")
+                                except ValueError:
+                                    pass
+                
+                if exchange_rates:
+                    return exchange_rates
+                else:
+                    print("  [ERROR] 未找到汇率数据")
+            else:
+                print(f"  [ERROR] 请求失败，状态码: {response.status_code}")
+        except Exception as e:
+            print(f"  [ERROR] 爬取汇率数据失败: {e}")
+        
+        return None
+    

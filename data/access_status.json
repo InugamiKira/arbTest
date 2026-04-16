@@ -1,102 +1,102 @@
 {
   "api": {
-    "last_access_date": "20260415",
+    "last_access_date": "20260416",
     "access_times": {
-      "915": "11:35:29",
+      "915": "10:35:38",
       "1435": null,
-      "1605": "20:30:31"
+      "1605": null
     }
   },
   "lof": {
-    "last_process_date": "2026-04-15",
+    "last_process_date": "2026-04-16",
     "processed_funds": {
       "501018": {
-        "last_process_time": "22:03:15",
+        "last_process_time": "10:40:50",
         "has_price": false,
         "has_nav": false
       },
       "160723": {
-        "last_process_time": "22:03:19",
+        "last_process_time": "10:40:52",
         "has_price": false,
         "has_nav": false
       },
       "161129": {
-        "last_process_time": "22:03:21",
-        "has_price": false,
-        "has_nav": false
-      },
-      "161815": {
-        "last_process_time": "22:03:26",
-        "has_price": false,
-        "has_nav": false
-      },
-      "160719": {
-        "last_process_time": "22:03:28",
-        "has_price": false,
-        "has_nav": false
-      },
-      "161116": {
-        "last_process_time": "22:03:32",
-        "has_price": false,
-        "has_nav": false
-      },
-      "164701": {
-        "last_process_time": "22:03:36",
-        "has_price": false,
-        "has_nav": false
-      },
-      "165513": {
-        "last_process_time": "22:03:38",
-        "has_price": false,
-        "has_nav": false
-      },
-      "162411": {
-        "last_process_time": "22:03:46",
-        "has_price": false,
-        "has_nav": false
-      },
-      "161127": {
-        "last_process_time": "22:03:54",
-        "has_price": false,
-        "has_nav": false
-      },
-      "161125": {
-        "last_process_time": "22:03:57",
-        "has_price": false,
-        "has_nav": false
-      },
-      "161130": {
-        "last_process_time": "22:03:59",
-        "has_price": false,
-        "has_nav": false
-      },
-      "161226": {
-        "last_process_time": "22:04:01",
+        "last_process_time": "10:40:54",
         "has_price": false,
         "has_nav": false
       },
       "160216": {
-        "last_process_time": "22:03:23",
+        "last_process_time": "10:40:56",
+        "has_price": false,
+        "has_nav": false
+      },
+      "161815": {
+        "last_process_time": "10:40:59",
+        "has_price": false,
+        "has_nav": false
+      },
+      "160719": {
+        "last_process_time": "10:41:02",
+        "has_price": false,
+        "has_nav": false
+      },
+      "161116": {
+        "last_process_time": "10:41:04",
+        "has_price": false,
+        "has_nav": false
+      },
+      "164701": {
+        "last_process_time": "10:41:06",
+        "has_price": false,
+        "has_nav": false
+      },
+      "165513": {
+        "last_process_time": "10:41:09",
         "has_price": false,
         "has_nav": false
       },
       "513350": {
-        "last_process_time": "22:03:40",
+        "last_process_time": "10:41:11",
         "has_price": false,
         "has_nav": false
       },
       "159518": {
-        "last_process_time": "22:03:43",
+        "last_process_time": "10:41:14",
+        "has_price": false,
+        "has_nav": false
+      },
+      "162411": {
+        "last_process_time": "10:41:16",
         "has_price": false,
         "has_nav": false
       },
       "162415": {
-        "last_process_time": "22:03:48",
+        "last_process_time": "10:41:18",
         "has_price": false,
         "has_nav": false
       },
       "159502": {
-        "last_process_time": "22:03:52",
+        "last_process_time": "10:41:21",
+        "has_price": false,
+        "has_nav": false
+      },
+      "161127": {
+        "last_process_time": "10:41:23",
+        "has_price": false,
+        "has_nav": false
+      },
+      "161125": {
+        "last_process_time": "10:41:26",
+        "has_price": false,
+        "has_nav": false
+      },
+      "161130": {
+        "last_process_time": "10:41:29",
+        "has_price": false,
+        "has_nav": false
+      },
+      "161226": {
+        "last_process_time": "10:41:32",
         "has_price": false,
         "has_nav": false
       }
