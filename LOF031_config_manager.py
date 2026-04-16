@@ -53,3 +53,12 @@ class ConfigManager:
     def get_future_oil_calibration(self):
         """获取原油期货校准值"""
         return self.get('future_oil_calibration', 0.8227)  # 默认值
+
+    def get_fund_rate_type(self, fund_code):
+        """获取基金的汇率基准类型 (midpoint 或 spot)"""
+        if not self.config:
+            self.load_config()
+        for fund in self.config.get('funds', []):
+            if str(fund.get('code')) == str(fund_code):
+                return fund.get('rate_type', 'midpoint')
+        return 'midpoint'

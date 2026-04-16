@@ -476,6 +476,7 @@ funds:
   holdings_portfolio: []
   future_hedging: []
   val_tab_type: sector
+  rate_type: spot
 - code: '159518'
   name: 嘉实标普石油
   category: 纯ETF
@@ -494,6 +495,7 @@ funds:
   sina_index_url: ''
   holdings_portfolio: []
   future_hedging: []
+  rate_type: spot
 - code: '162411'
   name: 华宝油气
   category: 纯ETF
@@ -555,6 +557,7 @@ funds:
   holdings_portfolio: []
   future_hedging: []
   val_tab_type: sector
+  rate_type: spot
 - code: '161127'
   name: 标普生物科技
   category: 纯ETF

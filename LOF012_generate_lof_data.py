@@ -566,8 +566,20 @@ class LofDataGenerator:
         # 新增：从新浪获取标准ETF与指数数据兜底 (防止API缺失导致估值断层)
         # ==========================================
         print("\n=== 获取标准ETF与指数数据兜底(新浪) ===")
-        # 核心隔离逻辑：剔除 GLD 和 USO，坚决不从新浪爬取这两只大宗本尊，避免覆盖Woody官方数据
-        etfs_to_fetch = ['SPY', 'QQQ', 'SLV', 'XOP', 'XBI', '.INX', '.NDX']
+        # 动态获取底仓ETF：剔除 GLD 和 USO，坚决不从新浪爬取这两只大宗本尊
+        etfs_to_fetch = set(['.INX', '.NDX'])
+        config = load_config()
+        if config:
+            for fund in config.get('funds', []):
+                for item in fund.get('valuation_portfolio', []) + fund.get('hedging_portfolio', []):
+                    sym = item.get('symbol', '').upper()
+                    # 提取底层资产代码 (例如 ^GLD-EU 提取出 GLD)
+                    base_sym = re.sub(r'[\^\-].*$', '', sym) if '^' in sym or '-' in sym else sym
+                    if base_sym and base_sym not in ['GLD', 'USO']:
+                        etfs_to_fetch.add(base_sym)
+        etfs_to_fetch = list(etfs_to_fetch)
+        print(f"  [INFO] 动态解析需要新浪兜底的ETF/指数列表: {etfs_to_fetch}")
+        
         for etf in etfs_to_fetch:
             check_date_sina = t_minus_1_str # 标准美股 ETF 全部只对齐 T-1
             
@@ -944,7 +956,7 @@ class LofDataGenerator:
             merged_df.rename(columns={'人民币中间价_y': '人民币中间价'}, inplace=True)
         
         # 处理所有可能的ETF列冲突
-        etf_columns = ['GLD', '^GLD-JP', '^GLD-EU', 'USO', '^USO-JP', '^USO-EU', '^USO-HK', 'SLV', 'XOP', 'XBI', 'SPY', 'QQQ']
+        etf_columns = ['GLD', '^GLD-JP', '^GLD-EU', 'USO', '^USO-JP', '^USO-EU', '^USO-HK', 'SLV', 'XOP', 'XBI', 'SPY', 'QQQ', 'XLY']
         for etf_col in etf_columns:
             if f'{etf_col}_x' in merged_df.columns and f'{etf_col}_y' in merged_df.columns:
                 # 优先使用basic_df中的数据（_y）

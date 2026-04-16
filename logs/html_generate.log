@@ -1,23 +1,4 @@
-模块导入成功:
-ConfigManager: <class 'LOF031_config_manager.ConfigManager'>
-DataProcessor: <class 'LOF032_data_processor.DataProcessor'>
-HtmlGenerator: <class 'LOF033_html_generator.HtmlGenerator'>
-使用新架构运行...
-开始检查历史数据...
-成功: 历史数据已是最新，不需要更新
-历史数据已是最新，不需要更新
-开始生成LOF基金套利报表...
-无法连接到后台服务获取IB数据: HTTPConnectionPool(host='localhost', port=5000): Read timed out. (read timeout=5)
-获取到的期货数据: {'AG0': {'change_percent': -0.007570404764308065, 'price': 19810.0, 'settlement': 19645.0, 'source': 'SSE', 'vwap': 19773.1652213332}, 'CL': {'change_percent': 0.3680578376602021, 'price': 91.626, 'source': '新浪API'}, 'ES': {'change_percent': 0.18599249344946686, 'price': 7073.632, 'source': '新浪API'}, 'GC': {'change_percent': 0.30209801807776776, 'price': 4838.172, 'source': '新浪API'}, 'NQ': {'change_percent': 0.31203656293262194, 'price': 26447.77, 'source': '新浪API'}, 'is_trading_time': True, 'timestamp': 1776307103}
-使用期货校准值: 黄金=10.9067, 原油=0.8227
-
-=== 生成HTML前的调试信息 ===
-汇率: 无
-IB夜盘价格: {}
-IB状态信息: 后台服务(端口5000)未启动
-黄金校准值: 10.9067
-原油校准值: 0.8227
-生成的主页行数: 35808
-生成的详情页面数: 1438988
-=============================
-监控报表生成成功: D:\Study\codexTest\CodexLOFarb\lof_monitor.html
+  File "D:\Study\codexTest\CodexLOFarb\LOF03_generate_monitor_html.py", line 597
+    continue # 没有找到基准汇率，严禁使用固定值，强制熔断
+    ^^^^^^^^
+SyntaxError: 'continue' not properly in loop

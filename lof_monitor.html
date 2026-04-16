@@ -806,23 +806,12 @@
         <body>
             <div class="container">
 
-        <style>
-        @keyframes pulse-warning {
-            0% { box-shadow: 0 0 0 0 rgba(211,47,47, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(211,47,47, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(211,47,47, 0); }
-        }
-        </style>
-        <div id="exchange-rate-warning" class="container" style="background-color: #ffebee; color: #d32f2f; padding: 15px; margin: 10px auto; border-radius: 8px; border: 1px solid #ef9a9a; text-align: center; font-size: 16px; font-weight: bold; animation: pulse-warning 2s infinite;">
-            🚨 严重警告：获取今日实时汇率失败！为防止套利资金重大损失，所有实时估值已被强制熔断并显示空白。<br>
-            <span style="font-size: 13px; font-weight: normal; color: #555;">请检查网络，或点击顶部【⚙️ 静态数据维护】->【获取API数据】重试！</span>
-        </div>
 
                 <div id="page-home" class="page-section active" style="margin-top: 0px; padding:0; background:transparent; box-shadow:none;">
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
             <div style="flex: 0 0 280px; background: white; padding: 8px 12px; border-radius: 6px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center;">
                 <div style="font-size: 22px; font-weight: 700; color: #d32f2f; text-align: center; margin-bottom: 4px; letter-spacing: 1px;">LOF基金套利监控系统</div>
-                <div style="font-size: 13px; color: var(--secondary-color); text-align: center; font-family: var(--font-mono);"><span id="current-date-time">2026-04-16</span> | <span id="exchange-rate-display">无</span></div>
+                <div style="font-size: 13px; color: var(--secondary-color); text-align: center; font-family: var(--font-mono);"><span id="current-date-time">2026-04-16</span> | <span id="exchange-rate-display">汇率 - 中间价: 6.8616</span></div>
                  <div style="font-size: 11px; text-align: center; margin-top: 6px; color: #666;">A股实时行情: <span id="lof-source-badge" style="font-weight:bold; background:#f5f5f5; color:#333; padding:2px 4px; border-radius:3px; border:1px solid #ddd; margin-right:4px;">检测中...</span> <button onclick="reconnectLofSource()" style="font-size:10px; padding:1px 4px; cursor:pointer; border:1px solid #ccc; border-radius:3px; background:#fff; color:#333;" title="如果您刚打开了QMT或通达信，点击此按钮可让程序重新挂载极速通道">🔄 尝试重连</button></div>
             </div>
             <div style="flex: 1 1 auto; min-width: 680px;">
@@ -862,7 +851,7 @@
                                         <input type="radio" name="calc_source" id="source-ib" value="ib" checked onchange="window.calculateRealTimeValues()" style="margin: 0; transform: scale(0.7);"> 夜盘(买一)
                                     </label>
                                 </td>
-                                <td id="ib-val-gld" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">442.33</td><td id="ib-val-uso" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">123.08</td><td id="ib-val-xop" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">163.61</td><td id="ib-val-xbi" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">136.38</td><td id="ib-val-slv" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">72.51</td><td id="ib-val-spy" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">701.32</td><td id="ib-val-qqq" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">639.52</td>
+                                <td id="ib-val-gld" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">443.15</td><td id="ib-val-uso" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">122.82</td><td id="ib-val-xop" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">163.56</td><td id="ib-val-xbi" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">136.41</td><td id="ib-val-slv" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">72.80</td><td id="ib-val-spy" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">701.13</td><td id="ib-val-qqq" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">639.58</td>
                             </tr>
                             <!-- 手工输入 -->
                             <tr style="background-color: #fff; height: 24px;">
@@ -920,8 +909,8 @@
         <td colspan="3" onclick="window.openSandbox('501018', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-501018">-</span><br><span class="num-font" id="realtime-premium-501018" style="font-size:14px;">-</span><span id="realtime-light-501018"></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-501018">1.5842</span><br><span class="num-font premium-positive" id="rt-calib-prem-501018" style="font-size:14px;">+39.88%</span><span id="rt-calib-light-501018"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-501018">-</span><br><span class="num-font" id="rt-exact-prem-501018" style="font-size:14px;"></span><span id="rt-exact-light-501018"></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-501018">1.5838</span><br><span class="num-font premium-positive" id="rt-calib-prem-501018" style="font-size:14px;">+39.92%</span><span id="rt-calib-light-501018"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-501018">1.7151</span><br><span class="num-font premium-positive" id="rt-exact-prem-501018" style="font-size:14px;">+29.21%</span><span id="rt-exact-light-501018"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
             </div>
         </td>
                 </tr>
@@ -936,8 +925,8 @@
         <td colspan="3" onclick="window.openSandbox('160723', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-160723">-</span><br><span class="num-font" id="realtime-premium-160723" style="font-size:14px;">-</span><span id="realtime-light-160723"></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-160723">1.7975</span><br><span class="num-font premium-positive" id="rt-calib-prem-160723" style="font-size:14px;">+35.36%</span><span id="rt-calib-light-160723"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-160723">-</span><br><span class="num-font" id="rt-exact-prem-160723" style="font-size:14px;"></span><span id="rt-exact-light-160723"></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-160723">1.7970</span><br><span class="num-font premium-positive" id="rt-calib-prem-160723" style="font-size:14px;">+35.40%</span><span id="rt-calib-light-160723"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-160723">1.9636</span><br><span class="num-font premium-positive" id="rt-exact-prem-160723" style="font-size:14px;">+23.90%</span><span id="rt-exact-light-160723"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
             </div>
         </td>
                 </tr>
@@ -952,8 +941,8 @@
         <td colspan="3" onclick="window.openSandbox('161129', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-161129">-</span><br><span class="num-font" id="realtime-premium-161129" style="font-size:14px;">-</span><span id="realtime-light-161129"></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-161129">1.5249</span><br><span class="num-font premium-positive" id="rt-calib-prem-161129" style="font-size:14px;">+36.07%</span><span id="rt-calib-light-161129"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161129">-</span><br><span class="num-font" id="rt-exact-prem-161129" style="font-size:14px;"></span><span id="rt-exact-light-161129"></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-161129">1.5246</span><br><span class="num-font premium-positive" id="rt-calib-prem-161129" style="font-size:14px;">+36.10%</span><span id="rt-calib-light-161129"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161129">1.6286</span><br><span class="num-font premium-positive" id="rt-exact-prem-161129" style="font-size:14px;">+27.41%</span><span id="rt-exact-light-161129"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
             </div>
         </td>
                 </tr>
@@ -968,8 +957,8 @@
         <td colspan="3" onclick="window.openSandbox('160216', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-160216">-</span><br><span class="num-font" id="realtime-premium-160216" style="font-size:14px;">-</span><span id="realtime-light-160216"></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-160216">1.2477</span><br><span class="num-font premium-negative" id="rt-calib-prem-160216" style="font-size:14px;">-40.45%</span><span id="rt-calib-light-160216"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-160216">-</span><br><span class="num-font" id="rt-exact-prem-160216" style="font-size:14px;"></span><span id="rt-exact-light-160216"></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-160216">1.2481</span><br><span class="num-font premium-negative" id="rt-calib-prem-160216" style="font-size:14px;">-40.47%</span><span id="rt-calib-light-160216"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-160216">0.7524</span><br><span class="num-font premium-negative" id="rt-exact-prem-160216" style="font-size:14px;">-1.24%</span><span id="rt-exact-light-160216"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
             </div>
         </td>
                 </tr>
@@ -984,8 +973,8 @@
         <td colspan="3" onclick="window.openSandbox('161815', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-161815">-</span><br><span class="num-font" id="realtime-premium-161815" style="font-size:14px;">-</span><span id="realtime-light-161815"></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-161815">1.7388</span><br><span class="num-font premium-negative" id="rt-calib-prem-161815" style="font-size:14px;">-33.23%</span><span id="rt-calib-light-161815"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161815">-</span><br><span class="num-font" id="rt-exact-prem-161815" style="font-size:14px;"></span><span id="rt-exact-light-161815"></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-161815">1.7394</span><br><span class="num-font premium-negative" id="rt-calib-prem-161815" style="font-size:14px;">-33.25%</span><span id="rt-calib-light-161815"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161815">1.1839</span><br><span class="num-font premium-negative" id="rt-exact-prem-161815" style="font-size:14px;">-1.93%</span><span id="rt-exact-light-161815"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
             </div>
         </td>
                 </tr>
@@ -1000,8 +989,8 @@
         <td colspan="3" onclick="window.openSandbox('160719', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-160719">-</span><br><span class="num-font" id="realtime-premium-160719" style="font-size:14px;">-</span><span id="realtime-light-160719"></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-160719">2.1816</span><br><span class="num-font premium-negative" id="rt-calib-prem-160719" style="font-size:14px;">-1.27%</span><span id="rt-calib-light-160719"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-160719">-</span><br><span class="num-font" id="rt-exact-prem-160719" style="font-size:14px;"></span><span id="rt-exact-light-160719"></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-160719">2.1825</span><br><span class="num-font premium-negative" id="rt-calib-prem-160719" style="font-size:14px;">-1.31%</span><span id="rt-calib-light-160719"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-160719">2.1774</span><br><span class="num-font premium-negative" id="rt-exact-prem-160719" style="font-size:14px;">-1.07%</span><span id="rt-exact-light-160719"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
             </div>
         </td>
                 </tr>
@@ -1016,8 +1005,8 @@
         <td colspan="3" onclick="window.openSandbox('161116', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-161116">-</span><br><span class="num-font" id="realtime-premium-161116" style="font-size:14px;">-</span><span id="realtime-light-161116"></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-161116">1.8053</span><br><span class="num-font premium-positive" id="rt-calib-prem-161116" style="font-size:14px;">+0.87%</span><span id="rt-calib-light-161116"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161116">-</span><br><span class="num-font" id="rt-exact-prem-161116" style="font-size:14px;"></span><span id="rt-exact-light-161116"></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-161116">1.8060</span><br><span class="num-font premium-positive" id="rt-calib-prem-161116" style="font-size:14px;">+0.83%</span><span id="rt-calib-light-161116"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161116">1.8058</span><br><span class="num-font premium-positive" id="rt-exact-prem-161116" style="font-size:14px;">+0.84%</span><span id="rt-exact-light-161116"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
             </div>
         </td>
                 </tr>
@@ -1032,8 +1021,8 @@
         <td colspan="3" onclick="window.openSandbox('164701', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-164701">-</span><br><span class="num-font" id="realtime-premium-164701" style="font-size:14px;">-</span><span id="realtime-light-164701"></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-164701">1.9211</span><br><span class="num-font premium-negative" id="rt-calib-prem-164701" style="font-size:14px;">-0.79%</span><span id="rt-calib-light-164701"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-164701">-</span><br><span class="num-font" id="rt-exact-prem-164701" style="font-size:14px;"></span><span id="rt-exact-light-164701"></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-164701">1.9219</span><br><span class="num-font premium-negative" id="rt-calib-prem-164701" style="font-size:14px;">-0.83%</span><span id="rt-calib-light-164701"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-164701">1.9236</span><br><span class="num-font premium-negative" id="rt-exact-prem-164701" style="font-size:14px;">-0.92%</span><span id="rt-exact-light-164701"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
             </div>
         </td>
                 </tr>
@@ -1048,8 +1037,8 @@
         <td colspan="3" onclick="window.openSandbox('165513', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-165513">-</span><br><span class="num-font" id="realtime-premium-165513" style="font-size:14px;">-</span><span id="realtime-light-165513"></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-165513">1.1534</span><br><span class="num-font premium-negative" id="rt-calib-prem-165513" style="font-size:14px;">-1.08%</span><span id="rt-calib-light-165513"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
-                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-165513">-</span><br><span class="num-font" id="rt-exact-prem-165513" style="font-size:14px;"></span><span id="rt-exact-light-165513"></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="rt-calib-val-165513">1.1539</span><br><span class="num-font premium-negative" id="rt-calib-prem-165513" style="font-size:14px;">-1.12%</span><span id="rt-calib-light-165513"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
+                <div style="flex: 1; width: 120px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-165513">1.1534</span><br><span class="num-font premium-negative" id="rt-exact-prem-165513" style="font-size:14px;">-1.08%</span><span id="rt-exact-light-165513"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
             </div>
         </td>
                 </tr></tbody>
@@ -1153,7 +1142,7 @@
         <td colspan="2" onclick="window.openSandbox('161125', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 140px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-161125">-</span><br><span class="num-font" id="realtime-premium-161125" style="font-size:14px;">-</span><span id="realtime-light-161125"></span></div>
-                <div style="flex: 1; width: 140px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161125">-</span><br><span class="num-font" id="rt-exact-prem-161125" style="font-size:14px;"></span><span id="rt-exact-light-161125"></span></div>
+                <div style="flex: 1; width: 140px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161125">2.9365</span><br><span class="num-font premium-negative" id="rt-exact-prem-161125" style="font-size:14px;">-0.80%</span><span id="rt-exact-light-161125"><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></span></div>
             </div>
         </td>
             </tr>
@@ -1168,7 +1157,7 @@
         <td colspan="2" onclick="window.openSandbox('161130', 'etf')" class="clickable-cell col-realtime-bg" title="点击打开实时估值沙盘" style="padding: 0;">
             <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
                 <div style="flex: 1; width: 140px; padding: 8px 4px; border-right: 1px dashed rgba(0,0,0,0.05);"><span class="num-font" id="realtime-valuation-161130">-</span><br><span class="num-font" id="realtime-premium-161130" style="font-size:14px;">-</span><span id="realtime-light-161130"></span></div>
-                <div style="flex: 1; width: 140px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161130">-</span><br><span class="num-font" id="rt-exact-prem-161130" style="font-size:14px;"></span><span id="rt-exact-light-161130"></span></div>
+                <div style="flex: 1; width: 140px; padding: 8px 4px;"><span class="num-font" id="rt-exact-val-161130">4.0227</span><br><span class="num-font premium-negative" id="rt-exact-prem-161130" style="font-size:14px;">-1.04%</span><span id="rt-exact-light-161130"><span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span></span></div>
             </div>
         </td>
             </tr></tbody>
@@ -1194,10 +1183,10 @@
                             <td class="num-font" style="width: 65px;">2.2259</td>
                             <td class="num-font" style="width: 70px;">19645.00</td>
                             <td class="num-font" style="width: 70px;">2.876</td>
-                            <td class="num-font" style="width: 85px;">19850.00</td>
-                            <td class="num-font" style="color:#d35400; font-weight:bold; width: 100px;">19773.54</td>
-                            <td class="num-font" style="width: 110px;">2.2405<br><span class="num-font premium-positive" style="font-size:14px;">+28.37%</span><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></td>
-                            <td class="num-font" style="width: 110px;">2.2491<br><span class="num-font premium-positive" style="font-size:14px;">+27.87%</span><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></td>
+                            <td class="num-font" style="width: 85px;">19914.00</td>
+                            <td class="num-font" style="color:#d35400; font-weight:bold; width: 100px;">19800.09</td>
+                            <td class="num-font" style="width: 110px;">2.2435<br><span class="num-font premium-positive" style="font-size:14px;">+28.19%</span><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></td>
+                            <td class="num-font" style="width: 110px;">2.2564<br><span class="num-font premium-positive" style="font-size:14px;">+27.46%</span><span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -1255,9 +1244,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('501018-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('501018-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-501018-20260416" class="verify-row secondary-page-row"><td colspan="16"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>^USO-EU</th><th class='col-etf-bg-th'>USO</th><th class='col-etf-bg-th'>^USO-JP</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.7109 <span class="pill pill-down">-3.24%</span></td><td>125.24</td><td>123.85</td><td>125.98</td><td>-</td><td>91.28</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">2.216</td><td class='col-etf-bg'>124.92</td><td class='col-etf-bg'>122.59</td><td class='col-etf-bg'>121.43</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.6958</td><td class="num-font col-etf-bg "><b>+30.68%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">91.29</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">1.7108</td><td class="num-font col-future-bg "><b>+29.53%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('501018-20260415')">▶ 验算</button></td></tr>
@@ -1378,7 +1367,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -1386,7 +1375,7 @@
             </tr>
             <tr id="verify-f-501018-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>CL 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>1.7109 <span class="pill pill-down">-3.24%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -1639,7 +1628,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-501018" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-501018" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-501018" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('501018'); window.calcFutureSandbox('501018'); window.calcPureFutureSandbox('501018')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -1904,9 +1893,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('160723-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('160723-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-160723-20260416" class="verify-row secondary-page-row"><td colspan="16"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>USO</th><th class='col-etf-bg-th'>^USO-EU</th><th class='col-etf-bg-th'>^USO-JP</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.9582 <span class="pill pill-down">-2.94%</span></td><td>123.85</td><td>125.24</td><td>125.98</td><td>-</td><td>91.28</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">2.433</td><td class='col-etf-bg'>122.59</td><td class='col-etf-bg'>124.92</td><td class='col-etf-bg'>121.43</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.9450</td><td class="num-font col-etf-bg "><b>+25.09%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">91.29</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">1.9581</td><td class="num-font col-future-bg "><b>+24.25%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('160723-20260415')">▶ 验算</button></td></tr>
@@ -2027,7 +2016,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -2035,7 +2024,7 @@
             </tr>
             <tr id="verify-f-160723-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>CL 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>1.9582 <span class="pill pill-down">-2.94%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -2288,7 +2277,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-160723" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-160723" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-160723" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('160723'); window.calcFutureSandbox('160723'); window.calcPureFutureSandbox('160723')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -2553,9 +2542,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161129-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161129-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-161129-20260416" class="verify-row secondary-page-row"><td colspan="17"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>^USO-EU</th><th class='col-etf-bg-th'>^USO-JP</th><th class='col-etf-bg-th'>USO</th><th class='col-etf-bg-th'>^USO-HK</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.6253 <span class="pill pill-down">-3.04%</span></td><td>125.24</td><td>125.98</td><td>123.85</td><td>124.78</td><td>-</td><td>91.28</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">2.075</td><td class='col-etf-bg'>124.92</td><td class='col-etf-bg'>121.43</td><td class='col-etf-bg'>122.59</td><td class='col-etf-bg'>121.55</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.6095</td><td class="num-font col-etf-bg "><b>+28.92%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">91.29</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">1.6253</td><td class="num-font col-future-bg "><b>+27.67%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161129-20260415')">▶ 验算</button></td></tr>
@@ -2676,7 +2665,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -2684,7 +2673,7 @@
             </tr>
             <tr id="verify-f-161129-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>CL 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>1.6253 <span class="pill pill-down">-3.04%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -2937,7 +2926,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-161129" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-161129" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-161129" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('161129'); window.calcFutureSandbox('161129'); window.calcPureFutureSandbox('161129')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -3202,9 +3191,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('160216-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('160216-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-160216-20260416" class="verify-row secondary-page-row"><td colspan="15"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>GLD</th><th class='col-etf-bg-th'>USO</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>0.7530 <span class="pill pill-down">-0.53%</span></td><td>445.09</td><td>123.85</td><td>-</td><td>-</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">0.743</td><td class='col-etf-bg'>440.46</td><td class='col-etf-bg'>122.59</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">0.7477</td><td class="num-font col-etf-bg neg-value"><b>-0.63%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('160216-20260415')">▶ 验算</button></td></tr>
@@ -3325,7 +3314,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -3333,7 +3322,7 @@
             </tr>
             <tr id="verify-f-160216-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>GC 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>0.7530 <span class="pill pill-down">-0.53%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -3586,7 +3575,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-160216" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-160216" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-160216" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('160216'); window.calcFutureSandbox('160216'); window.calcPureFutureSandbox('160216')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -3878,9 +3867,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161815-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161815-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-161815-20260416" class="verify-row secondary-page-row"><td colspan="16"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>GLD</th><th class='col-etf-bg-th'>USO</th><th class='col-etf-bg-th'>^USO-EU</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.1850 <span class="pill pill-up">+0.77%</span></td><td>445.09</td><td>123.85</td><td>125.24</td><td>-</td><td>4850.10</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">1.161</td><td class='col-etf-bg'>440.46</td><td class='col-etf-bg'>122.59</td><td class='col-etf-bg'>124.92</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.1766</td><td class="num-font col-etf-bg neg-value"><b>-1.32%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">4823.60</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">1.1801</td><td class="num-font col-future-bg neg-value"><b>-1.62%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161815-20260415')">▶ 验算</button></td></tr>
@@ -4001,7 +3990,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -4009,7 +3998,7 @@
             </tr>
             <tr id="verify-f-161815-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>GC 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>1.1850 <span class="pill pill-up">+0.77%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -4262,7 +4251,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-161815" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-161815" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-161815" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('161815'); window.calcFutureSandbox('161815'); window.calcPureFutureSandbox('161815')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -4554,9 +4543,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('160719-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('160719-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-160719-20260416" class="verify-row secondary-page-row"><td colspan="15"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>GLD</th><th class='col-etf-bg-th'>^GLD-EU</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>2.1800 <span class="pill pill-up">+2.01%</span></td><td>445.09</td><td>441.60</td><td>-</td><td>4850.10</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">2.154</td><td class='col-etf-bg'>440.46</td><td class='col-etf-bg'>440.64</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">2.1655</td><td class="num-font col-etf-bg neg-value"><b>-0.53%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">4823.60</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">2.1684</td><td class="num-font col-future-bg neg-value"><b>-0.66%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('160719-20260415')">▶ 验算</button></td></tr>
@@ -4677,7 +4666,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -4685,7 +4674,7 @@
             </tr>
             <tr id="verify-f-160719-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>GC 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>2.1800 <span class="pill pill-up">+2.01%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -4938,7 +4927,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-160719" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-160719" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-160719" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('160719'); window.calcFutureSandbox('160719'); window.calcPureFutureSandbox('160719')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -5203,9 +5192,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161116-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161116-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-161116-20260416" class="verify-row secondary-page-row"><td colspan="15"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>GLD</th><th class='col-etf-bg-th'>^GLD-EU</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.8079 <span class="pill pill-up">+1.97%</span></td><td>445.09</td><td>441.60</td><td>-</td><td>4850.10</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">1.821</td><td class='col-etf-bg'>440.46</td><td class='col-etf-bg'>440.64</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.7919</td><td class="num-font col-etf-bg "><b>+1.62%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">4823.60</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">1.7984</td><td class="num-font col-future-bg "><b>+1.25%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161116-20260415')">▶ 验算</button></td></tr>
@@ -5326,7 +5315,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -5334,7 +5323,7 @@
             </tr>
             <tr id="verify-f-161116-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>GC 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>1.8079 <span class="pill pill-up">+1.97%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -5587,7 +5576,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-161116" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-161116" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-161116" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('161116'); window.calcFutureSandbox('161116'); window.calcPureFutureSandbox('161116')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -5852,9 +5841,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('164701-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('164701-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-164701-20260416" class="verify-row secondary-page-row"><td colspan="15"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>GLD</th><th class='col-etf-bg-th'>SLV</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.9260 <span class="pill pill-up">+2.07%</span></td><td>445.09</td><td>72.04</td><td>-</td><td>4850.10</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">1.906</td><td class='col-etf-bg'>440.46</td><td class='col-etf-bg'>71.84</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.9062</td><td class="num-font col-etf-bg neg-value"><b>-0.01%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">4823.60</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">1.9154</td><td class="num-font col-future-bg neg-value"><b>-0.49%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('164701-20260415')">▶ 验算</button></td></tr>
@@ -5975,7 +5964,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -5983,7 +5972,7 @@
             </tr>
             <tr id="verify-f-164701-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>GC 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>1.9260 <span class="pill pill-up">+2.07%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -6236,7 +6225,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-164701" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-164701" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-164701" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('164701'); window.calcFutureSandbox('164701'); window.calcPureFutureSandbox('164701')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -6505,9 +6494,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('165513-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('165513-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-165513-20260416" class="verify-row secondary-page-row"><td colspan="16"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>GLD</th><th class='col-etf-bg-th'>^GLD-EU</th><th class='col-etf-bg-th'>^GLD-JP</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.1547 <span class="pill pill-up">+1.83%</span></td><td>445.09</td><td>441.60</td><td>437.72</td><td>-</td><td>4850.10</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">1.141</td><td class='col-etf-bg'>440.46</td><td class='col-etf-bg'>440.64</td><td class='col-etf-bg'>442.08</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.1454</td><td class="num-font col-etf-bg neg-value"><b>-0.38%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">4823.60</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">1.1489</td><td class="num-font col-future-bg neg-value"><b>-0.69%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('165513-20260415')">▶ 验算</button></td></tr>
@@ -6628,7 +6617,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -6636,7 +6625,7 @@
             </tr>
             <tr id="verify-f-165513-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>GC 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>1.1547 <span class="pill pill-up">+1.83%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -6889,7 +6878,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-165513" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-165513" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-165513" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('165513'); window.calcFutureSandbox('165513'); window.calcPureFutureSandbox('165513')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -7154,9 +7143,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('513350-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('513350-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-513350-20260416" class="verify-row secondary-page-row"><td colspan="14"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>XOP</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.1682 <span class="pill pill-down">-3.25%</span></td><td>163.42</td><td>-</td><td>-</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>164.26</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.1740</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('513350-20260415')">▶ 验算</button></td></tr>
@@ -7276,7 +7265,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-513350" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-513350" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-513350" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('513350'); window.calcFutureSandbox('513350'); window.calcPureFutureSandbox('513350')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -7441,9 +7430,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('159518-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('159518-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-159518-20260416" class="verify-row secondary-page-row"><td colspan="14"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>XOP</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.1136 <span class="pill pill-down">-3.24%</span></td><td>163.42</td><td>-</td><td>-</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">1.202</td><td class='col-etf-bg'>164.26</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.1191</td><td class="num-font col-etf-bg "><b>+7.40%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('159518-20260415')">▶ 验算</button></td></tr>
@@ -7563,7 +7552,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-159518" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-159518" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-159518" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('159518'); window.calcFutureSandbox('159518'); window.calcPureFutureSandbox('159518')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -7728,9 +7717,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('162411-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('162411-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-162411-20260416" class="verify-row secondary-page-row"><td colspan="14"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>XOP</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>0.8745 <span class="pill pill-down">-3.09%</span></td><td>163.42</td><td>-</td><td>-</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">0.867</td><td class='col-etf-bg'>164.26</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">0.8786</td><td class="num-font col-etf-bg neg-value"><b>-1.32%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('162411-20260415')">▶ 验算</button></td></tr>
@@ -7850,7 +7839,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-162411" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-162411" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-162411" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('162411'); window.calcFutureSandbox('162411'); window.calcPureFutureSandbox('162411')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -8015,9 +8004,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('162415-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('162415-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-162415-20260416" class="verify-row secondary-page-row"><td colspan="14"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>XLY</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>2.8970 <span class="pill pill-up">+1.97%</span></td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">2.872</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('162415-20260415')">▶ 验算</button></td></tr>
@@ -8137,7 +8126,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-162415" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-162415" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-162415" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('162415'); window.calcFutureSandbox('162415'); window.calcPureFutureSandbox('162415')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -8302,9 +8291,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('159502-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('159502-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-159502-20260416" class="verify-row secondary-page-row"><td colspan="14"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>XBI</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.3756 <span class="pill pill-up">+2.70%</span></td><td>135.72</td><td>-</td><td>-</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">1.369</td><td class='col-etf-bg'>136.45</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.3828</td><td class="num-font col-etf-bg neg-value"><b>-1.00%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('159502-20260415')">▶ 验算</button></td></tr>
@@ -8424,7 +8413,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-159502" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-159502" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-159502" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('159502'); window.calcFutureSandbox('159502'); window.calcPureFutureSandbox('159502')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -8589,9 +8578,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161127-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161127-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-161127-20260416" class="verify-row secondary-page-row"><td colspan="14"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>XBI</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>1.8392 <span class="pill pill-up">+2.55%</span></td><td>135.72</td><td>-</td><td>-</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">1.834</td><td class='col-etf-bg'>136.45</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">1.8483</td><td class="num-font col-etf-bg neg-value"><b>-0.77%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161127-20260415')">▶ 验算</button></td></tr>
@@ -8711,7 +8700,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-161127" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-161127" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-161127" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('161127'); window.calcFutureSandbox('161127'); window.calcPureFutureSandbox('161127')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -8876,9 +8865,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161125-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161125-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-161125-20260416" class="verify-row secondary-page-row"><td colspan="14"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>SPY</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>2.9075 <span class="pill pill-up">+1.04%</span></td><td>694.46</td><td>-</td><td>7004.75</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">2.913</td><td class='col-etf-bg'>699.94</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">2.9288</td><td class="num-font col-etf-bg neg-value"><b>-0.54%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">7060.50</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">2.9290</td><td class="num-font col-future-bg neg-value"><b>-0.55%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161125-20260415')">▶ 验算</button></td></tr>
@@ -8999,7 +8988,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -9007,7 +8996,7 @@
             </tr>
             <tr id="verify-f-161125-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>ES 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>2.9075 <span class="pill pill-up">+1.04%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -9260,7 +9249,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-161125" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-161125" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-161125" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('161125'); window.calcFutureSandbox('161125'); window.calcPureFutureSandbox('161125')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -9525,9 +9514,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161130-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class='col-etf-bg'>-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161130-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-161130-20260416" class="verify-row secondary-page-row"><td colspan="14"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class='col-etf-bg-th'>QQQ</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class='col-etf-bg'>-</td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-14</td><td>6.8593</td><td>3.9524 <span class="pill pill-up">+1.62%</span></td><td>628.60</td><td>-</td><td>25996.75</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>无</td><td class="secondary-close-price">3.981</td><td class='col-etf-bg'>637.40</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">4.0044</td><td class="num-font col-etf-bg neg-value"><b>-0.58%</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">26365.50</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">4.0050</td><td class="num-font col-future-bg neg-value"><b>-0.60%</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161130-20260415')">▶ 验算</button></td></tr>
@@ -9648,7 +9637,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -9656,7 +9645,7 @@
             </tr>
             <tr id="verify-f-161130-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>NQ 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-14</td><td>3.9524 <span class="pill pill-up">+1.62%</span></td><td>6.8593</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -9909,7 +9898,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-161130" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-161130" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-161130" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('161130'); window.calcFutureSandbox('161130'); window.calcPureFutureSandbox('161130')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -10174,9 +10163,9 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>无</td><td>无</td><td class="secondary-close-price">-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161226-20260416')">▶ 验算</button></td></tr>
+        <tr class="secondary-page-row"><td class="num-font">04-16</td><td>6.8616</td><td>无</td><td class="secondary-close-price">-</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">无</td><td class="num-font col-etf-bg "><b>-</b></td><td class="num-font col-etf-bg ">-</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161226-20260416')">▶ 验算</button></td></tr>
         <tr id="verify-161226-20260416" class="verify-row secondary-page-row"><td colspan="13"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th><th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
-        <tr><td>本期(T)</td><td>04-16</td><td>无</td><td>无 <span class="pill pill-down">+nan%</span></td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
+        <tr><td>本期(T)</td><td>04-16</td><td>6.8616</td><td>无 <span class="pill pill-down">+nan%</span></td><td class="col-est">无 </td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无</td></tr>
         <tr><td>基准(T-1)</td><td>04-15</td><td>6.8582</td><td>2.2259 <span class="pill pill-up">+5.31%</span></td><td>-</td><td>-</td><td>-</td></tr>
         </tbody></table></div></td></tr>
         <tr class="secondary-page-row"><td class="num-font">04-15</td><td>6.8582</td><td>2.2259</td><td class="secondary-close-price">2.876</td><td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">2.0916</td><td class="num-font col-etf-bg "><b>+37.50%</b></td><td class="num-font col-etf-bg neg-value">-6.03%</td><td class="col-future-bg">-</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">无</td><td class="num-font col-future-bg "><b>-</b></td><td class="num-font col-future-bg ">-</td><td><button class="btn-verify" onclick="toggleVerify('161226-20260415')">▶ 验算</button></td></tr>
@@ -10297,7 +10286,7 @@
                         </thead>
                         <tbody>
             <tr class="secondary-page-row">
-                <td class="num-font">04-16</td><td>无</td><td class="num-font">-</td>
+                <td class="num-font">04-16</td><td>6.8616</td><td class="num-font">-</td>
                 <td class="num-font" style="color:#1976d2; font-weight:bold">无</td>
                 <td class="secondary-close-price">-</td><td class="num-font "><b>-</b></td>
                 <td>无</td><td class="num-font ">-</td>
@@ -10305,7 +10294,7 @@
             </tr>
             <tr id="verify-f-161226-20260416" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
             <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>AG0 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
-            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>无</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
+            <tr><td>本期(T)</td><td>04-16</td><td>无 <span class="pill pill-down">+nan%</span></td><td>6.8616</td><td>-</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">无 </td></tr>
             <tr><td>基准(T-1)</td><td>04-15</td><td>2.2259 <span class="pill pill-up">+5.31%</span></td><td>6.8582</td><td>-</td><td>-</td></tr>
             </tbody></table></div></td></tr>
             <tr class="secondary-page-row">
@@ -10558,7 +10547,7 @@
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
                         <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
-                        <span class="num-font" id="sb-exchange-rate-161226" style="font-size: 15px; font-weight: bold; color: #1976d2;">-</span>
+                        <span class="num-font" id="sb-exchange-rate-161226" style="font-size: 15px; font-weight: bold; color: #1976d2;">6.8616</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-161226" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('161226'); window.calcFutureSandbox('161226'); window.calcPureFutureSandbox('161226')">
                         <span style="color:#666; font-size:11px;">(该单价会同时用于三个估值计算)</span>
@@ -10804,7 +10793,7 @@
 
         <script>
             // 注入Python预先计算的基金基准数据，彻底抛弃前端读CSV
-            window.fundBaseData = {"501018": {"name": "南方原油", "baseNav": 1.7109, "baseExchangeRate": 6.8593, "position": 0.68, "hedgingPortfolio": [{"symbol": "^USO-EU", "weight": 0.47}, {"symbol": "USO", "weight": 0.29}, {"symbol": "^USO-JP", "weight": 0.24}], "baseEtfPrices": {"^USO-EU": 125.24, "USO": 123.85, "^USO-JP": 125.98}, "category": "原油", "futureSymbol": "CL", "baseFuturePrice": 91.28, "hedgeValue": 0.0, "etfHedgeValue": 730.2007414398338, "rmbExposure": 0.0, "futHedgeValue": 538.1729808528706, "latestCalibrationFactor": 0.8227, "latestExchangeRate": 6.8593}, "160723": {"name": "嘉实原油", "baseNav": 1.9582, "baseExchangeRate": 6.8593, "position": 0.77, "hedgingPortfolio": [{"symbol": "USO", "weight": 0.44}, {"symbol": "^USO-EU", "weight": 0.48}, {"symbol": "^USO-JP", "weight": 0.08}], "baseEtfPrices": {"USO": 123.85, "^USO-EU": 125.24, "^USO-JP": 125.98}, "category": "原油", "futureSymbol": "CL", "baseFuturePrice": 91.28, "hedgeValue": 0.0, "etfHedgeValue": 563.414522613532, "rmbExposure": 0.0, "futHedgeValue": 415.2481035459281, "latestCalibrationFactor": 0.8227, "latestExchangeRate": 6.8593}, "161129": {"name": "易方达原油", "baseNav": 1.6253, "baseExchangeRate": 6.8593, "position": 0.56, "hedgingPortfolio": [{"symbol": "^USO-EU", "weight": 0.4}, {"symbol": "^USO-JP", "weight": 0.35}, {"symbol": "USO", "weight": 0.19}, {"symbol": "^USO-HK", "weight": 0.06}], "baseEtfPrices": {"^USO-EU": 125.24, "^USO-JP": 125.98, "USO": 123.85, "^USO-HK": 124.78}, "category": "原油", "futureSymbol": "CL", "baseFuturePrice": 91.28, "hedgeValue": 0.0, "etfHedgeValue": 933.3708776841198, "rmbExposure": 0.0, "futHedgeValue": 687.9135544207222, "latestCalibrationFactor": 0.8227, "latestExchangeRate": 6.8593}, "160216": {"name": "国泰大宗商品", "baseNav": 0.753, "baseExchangeRate": 6.8593, "position": 0.67, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.62}, {"symbol": "USO", "weight": 0.38}], "baseEtfPrices": {"GLD": 445.09, "USO": 123.85}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 6051.427795286515, "rmbExposure": 0.0, "futHedgeValue": 65941.7869417851, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593}, "161815": {"name": "银华抗通胀", "baseNav": 1.185, "baseExchangeRate": 6.8593, "position": 0.73, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.75}, {"symbol": "USO", "weight": 0.15}, {"symbol": "^USO-EU", "weight": 0.1}], "baseEtfPrices": {"GLD": 445.09, "USO": 123.85, "^USO-EU": 125.24}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 3529.282511993526, "rmbExposure": 0.0, "futHedgeValue": 38458.22892318363, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593}, "160719": {"name": "嘉实黄金", "baseNav": 2.18, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.57}, {"symbol": "^GLD-EU", "weight": 0.43}], "baseEtfPrices": {"GLD": 445.09, "^GLD-EU": 441.6}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 1474.169887493964, "rmbExposure": 0.0, "futHedgeValue": 16063.877802993722, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593}, "161116": {"name": "易方达黄金", "baseNav": 1.8079, "baseExchangeRate": 6.8593, "position": 0.93, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.87}, {"symbol": "^GLD-EU", "weight": 0.13}], "baseEtfPrices": {"GLD": 445.09, "^GLD-EU": 441.6}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 1815.8094890584748, "rmbExposure": 0.0, "futHedgeValue": 19786.68944007394, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593}, "164701": {"name": "汇添富贵金属", "baseNav": 1.926, "baseExchangeRate": 6.8593, "position": 0.98, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.99}, {"symbol": "SLV", "weight": 0.01}], "baseEtfPrices": {"GLD": 445.09, "SLV": 72.04}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 1617.5036752707313, "rmbExposure": 0.0, "futHedgeValue": 17625.771361815758, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593}, "165513": {"name": "中信保诚", "baseNav": 1.1547, "baseExchangeRate": 6.8593, "position": 0.89, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.86}, {"symbol": "^GLD-EU", "weight": 0.11}, {"symbol": "^GLD-JP", "weight": 0.03}], "baseEtfPrices": {"GLD": 445.09, "^GLD-EU": 441.6, "^GLD-JP": 437.72}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 2970.766118540444, "rmbExposure": 0.0, "futHedgeValue": 32372.133167523447, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593}, "513350": {"name": "富国标普石油", "baseNav": 1.1682, "baseExchangeRate": 6.8593, "position": 1.0, "hedgingPortfolio": [{"symbol": "XOP", "weight": 1.0}], "baseEtfPrices": {"XOP": 163.42}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 959.5504245848314, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593}, "159518": {"name": "嘉实标普石油", "baseNav": 1.1136, "baseExchangeRate": 6.8593, "position": 1.0, "hedgingPortfolio": [{"symbol": "XOP", "weight": 1.0}], "baseEtfPrices": {"XOP": 163.42}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 1006.597347341954, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593}, "162411": {"name": "华宝油气", "baseNav": 0.8745, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "XOP", "weight": 1.0}], "baseEtfPrices": {"XOP": 163.42}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 1349.2784520477865, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593}, "162415": {"name": "美国消费", "baseNav": 2.897, "baseExchangeRate": 6.8593, "position": 0.94, "hedgingPortfolio": [{"symbol": "XLY", "weight": 1.0}], "baseEtfPrices": {"XLY": 0.0}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 0.0, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593}, "159502": {"name": "嘉实标普生物", "baseNav": 1.3756, "baseExchangeRate": 6.8593, "position": 1.0, "hedgingPortfolio": [{"symbol": "XBI", "weight": 1.0}], "baseEtfPrices": {"XBI": 135.72}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 676.7550130851993, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593}, "161127": {"name": "标普生物科技", "baseNav": 1.8392, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "XBI", "weight": 1.0}], "baseEtfPrices": {"XBI": 135.72}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 532.8084270048763, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593}, "161125": {"name": "易方达标普500", "baseNav": 2.9075, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "SPY", "weight": 1.0}], "baseEtfPrices": {"SPY": 694.46}, "category": "指数", "futureSymbol": "ES", "baseFuturePrice": 7004.75, "hedgeValue": 0.0, "etfHedgeValue": 1724.5814284291985, "rmbExposure": 0.0, "futHedgeValue": 17395.187283341627, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593}, "161130": {"name": "易方达纳100", "baseNav": 3.9524, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "QQQ", "weight": 1.0}], "baseEtfPrices": {"QQQ": 628.6}, "category": "指数", "futureSymbol": "NQ", "baseFuturePrice": 25996.75, "hedgeValue": 0.0, "etfHedgeValue": 1148.3378466914173, "rmbExposure": 0.0, "futHedgeValue": 47491.332987551876, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593}};
+            window.fundBaseData = {"501018": {"name": "南方原油", "baseNav": 1.7109, "baseExchangeRate": 6.8593, "position": 0.68, "hedgingPortfolio": [{"symbol": "^USO-EU", "weight": 0.47}, {"symbol": "USO", "weight": 0.29}, {"symbol": "^USO-JP", "weight": 0.24}], "baseEtfPrices": {"^USO-EU": 125.24, "USO": 123.85, "^USO-JP": 125.98}, "category": "原油", "futureSymbol": "CL", "baseFuturePrice": 91.28, "hedgeValue": 0.0, "etfHedgeValue": 730.2007414398338, "rmbExposure": 0.0, "futHedgeValue": 538.1729808528706, "latestCalibrationFactor": 0.8227, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "160723": {"name": "嘉实原油", "baseNav": 1.9582, "baseExchangeRate": 6.8593, "position": 0.77, "hedgingPortfolio": [{"symbol": "USO", "weight": 0.44}, {"symbol": "^USO-EU", "weight": 0.48}, {"symbol": "^USO-JP", "weight": 0.08}], "baseEtfPrices": {"USO": 123.85, "^USO-EU": 125.24, "^USO-JP": 125.98}, "category": "原油", "futureSymbol": "CL", "baseFuturePrice": 91.28, "hedgeValue": 0.0, "etfHedgeValue": 563.414522613532, "rmbExposure": 0.0, "futHedgeValue": 415.2481035459281, "latestCalibrationFactor": 0.8227, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "161129": {"name": "易方达原油", "baseNav": 1.6253, "baseExchangeRate": 6.8593, "position": 0.56, "hedgingPortfolio": [{"symbol": "^USO-EU", "weight": 0.4}, {"symbol": "^USO-JP", "weight": 0.35}, {"symbol": "USO", "weight": 0.19}, {"symbol": "^USO-HK", "weight": 0.06}], "baseEtfPrices": {"^USO-EU": 125.24, "^USO-JP": 125.98, "USO": 123.85, "^USO-HK": 124.78}, "category": "原油", "futureSymbol": "CL", "baseFuturePrice": 91.28, "hedgeValue": 0.0, "etfHedgeValue": 933.3708776841198, "rmbExposure": 0.0, "futHedgeValue": 687.9135544207222, "latestCalibrationFactor": 0.8227, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "160216": {"name": "国泰大宗商品", "baseNav": 0.753, "baseExchangeRate": 6.8593, "position": 0.67, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.62}, {"symbol": "USO", "weight": 0.38}], "baseEtfPrices": {"GLD": 445.09, "USO": 123.85}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 6051.427795286515, "rmbExposure": 0.0, "futHedgeValue": 65941.7869417851, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "161815": {"name": "银华抗通胀", "baseNav": 1.185, "baseExchangeRate": 6.8593, "position": 0.73, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.75}, {"symbol": "USO", "weight": 0.15}, {"symbol": "^USO-EU", "weight": 0.1}], "baseEtfPrices": {"GLD": 445.09, "USO": 123.85, "^USO-EU": 125.24}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 3529.282511993526, "rmbExposure": 0.0, "futHedgeValue": 38458.22892318363, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "160719": {"name": "嘉实黄金", "baseNav": 2.18, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.57}, {"symbol": "^GLD-EU", "weight": 0.43}], "baseEtfPrices": {"GLD": 445.09, "^GLD-EU": 441.6}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 1474.169887493964, "rmbExposure": 0.0, "futHedgeValue": 16063.877802993722, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "161116": {"name": "易方达黄金", "baseNav": 1.8079, "baseExchangeRate": 6.8593, "position": 0.93, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.87}, {"symbol": "^GLD-EU", "weight": 0.13}], "baseEtfPrices": {"GLD": 445.09, "^GLD-EU": 441.6}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 1815.8094890584748, "rmbExposure": 0.0, "futHedgeValue": 19786.68944007394, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "164701": {"name": "汇添富贵金属", "baseNav": 1.926, "baseExchangeRate": 6.8593, "position": 0.98, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.99}, {"symbol": "SLV", "weight": 0.01}], "baseEtfPrices": {"GLD": 445.09, "SLV": 72.04}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 1617.5036752707313, "rmbExposure": 0.0, "futHedgeValue": 17625.771361815758, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "165513": {"name": "中信保诚", "baseNav": 1.1547, "baseExchangeRate": 6.8593, "position": 0.89, "hedgingPortfolio": [{"symbol": "GLD", "weight": 0.86}, {"symbol": "^GLD-EU", "weight": 0.11}, {"symbol": "^GLD-JP", "weight": 0.03}], "baseEtfPrices": {"GLD": 445.09, "^GLD-EU": 441.6, "^GLD-JP": 437.72}, "category": "黄金", "futureSymbol": "GC", "baseFuturePrice": 4850.1, "hedgeValue": 0.0, "etfHedgeValue": 2970.766118540444, "rmbExposure": 0.0, "futHedgeValue": 32372.133167523447, "latestCalibrationFactor": 10.9067, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "513350": {"name": "富国标普石油", "baseNav": 1.1682, "baseExchangeRate": 6.8593, "position": 1.0, "hedgingPortfolio": [{"symbol": "XOP", "weight": 1.0}], "baseEtfPrices": {"XOP": 163.42}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 959.5504245848314, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "159518": {"name": "嘉实标普石油", "baseNav": 1.1136, "baseExchangeRate": 6.8593, "position": 1.0, "hedgingPortfolio": [{"symbol": "XOP", "weight": 1.0}], "baseEtfPrices": {"XOP": 163.42}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 1006.597347341954, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "162411": {"name": "华宝油气", "baseNav": 0.8745, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "XOP", "weight": 1.0}], "baseEtfPrices": {"XOP": 163.42}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 1349.2784520477865, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "162415": {"name": "美国消费", "baseNav": 2.897, "baseExchangeRate": 6.8593, "position": 0.94, "hedgingPortfolio": [{"symbol": "XLY", "weight": 1.0}], "baseEtfPrices": {"XLY": 0.0}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 0.0, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "159502": {"name": "嘉实标普生物", "baseNav": 1.3756, "baseExchangeRate": 6.8593, "position": 1.0, "hedgingPortfolio": [{"symbol": "XBI", "weight": 1.0}], "baseEtfPrices": {"XBI": 135.72}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 676.7550130851993, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "161127": {"name": "标普生物科技", "baseNav": 1.8392, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "XBI", "weight": 1.0}], "baseEtfPrices": {"XBI": 135.72}, "category": "纯ETF", "futureSymbol": "", "baseFuturePrice": 0.0, "hedgeValue": 0.0, "etfHedgeValue": 532.8084270048763, "rmbExposure": 0.0, "futHedgeValue": 0.0, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "161125": {"name": "易方达标普500", "baseNav": 2.9075, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "SPY", "weight": 1.0}], "baseEtfPrices": {"SPY": 694.46}, "category": "指数", "futureSymbol": "ES", "baseFuturePrice": 7004.75, "hedgeValue": 0.0, "etfHedgeValue": 1724.5814284291985, "rmbExposure": 0.0, "futHedgeValue": 17395.187283341627, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}, "161130": {"name": "易方达纳100", "baseNav": 3.9524, "baseExchangeRate": 6.8593, "position": 0.95, "hedgingPortfolio": [{"symbol": "QQQ", "weight": 1.0}], "baseEtfPrices": {"QQQ": 628.6}, "category": "指数", "futureSymbol": "NQ", "baseFuturePrice": 25996.75, "hedgeValue": 0.0, "etfHedgeValue": 1148.3378466914173, "rmbExposure": 0.0, "futHedgeValue": 47491.332987551876, "latestCalibrationFactor": 0.0, "latestExchangeRate": 6.8593, "todayExchangeRate": 6.8616}};
             window.calibData = { "gold": 10.9067, "oil": 0.8227 };
 
             // WebSocket连接
@@ -10908,13 +10897,10 @@
                     return 0;
                 }
                 
-                var todayExchangeRate = null;
-                var exchangeRateElement = document.getElementById('exchange-rate-display');
-                if (exchangeRateElement) {
-                    var match = exchangeRateElement.textContent.match(/汇率: ([\d.]+)/);
-                    if (match) todayExchangeRate = parseFloat(match[1]);
+                var todayExchangeRate = baseData.todayExchangeRate;
+                if (!todayExchangeRate || todayExchangeRate <= 0) {
+                    return 0; // 彻底没有有效汇率，强制熔断返回0
                 }
-                if (!todayExchangeRate || todayExchangeRate <= 0) return 0;
                 
                 var weightedEtfChangeRate = 0;
                 var hasValidData = false;
@@ -10956,14 +10942,8 @@
                 var baseData = window.fundBaseData[code];
                 if (!baseData) return;
                 
-                // 获取当前汇率
-                var topFx = document.getElementById('exchange-rate-display');
-                var fxRate = '';
-                if(topFx) {
-                    var match = topFx.textContent.match(/汇率: ([\d.]+)/);
-                    if(match) fxRate = match[1];
-                }
-                
+                // 取后端注入的精确汇率 (避开 DOM 正则匹配导致的格式错乱)
+                var fxRate = baseData.todayExchangeRate || '';
                 // 设置所有三个估值模块的汇率
                 var fxEl = document.getElementById('sb-exchange-rate-' + code);
                 if(fxEl) fxEl.textContent = fxRate;
@@ -11951,18 +11931,21 @@
             
             // 核心功能：前端纯JS无刷新算透期货校准和纯期货两列估值
             window.updateFuturesTableColumns = function(gcPrice, clPrice, nqPrice, esPrice) {
-                var todayExchangeRate = null;
-                var exchangeRateElement = document.getElementById('exchange-rate-display');
-                if (exchangeRateElement) {
-                    var match = exchangeRateElement.textContent.match(/汇率: ([\d.]+)/);
-                    if (match) todayExchangeRate = parseFloat(match[1]);
-                }
-                if (!todayExchangeRate || todayExchangeRate <= 0) return;
-
                 Object.keys(window.fundBaseData).forEach(function(code) {
                     var baseData = window.fundBaseData[code];
                     if (!baseData || !baseData.position) return;
-                    var futPrice = 0;
+
+                // 汇率获取：优先用实时，失败则降级到该基金自己的历史汇率
+                var effectiveExchangeRate = baseData.todayExchangeRate;
+                if (!effectiveExchangeRate || effectiveExchangeRate <= 0) {
+                    if (baseData && baseData.latestExchangeRate) {
+                        effectiveExchangeRate = baseData.latestExchangeRate;
+                    } else {
+                        return; // 彻底没有汇率，放弃此基金的计算
+                    }
+                }
+
+                var futPrice = 0;
                     if (baseData.futureSymbol === 'GC') futPrice = gcPrice;
                     else if (baseData.futureSymbol === 'CL') futPrice = clPrice;
                     else if (baseData.futureSymbol === 'NQ') futPrice = nqPrice;
@@ -12079,8 +12062,9 @@
                     .then(data => {
                         if (data.rate) {
                             var el = document.getElementById('exchange-rate-display');
-                            if (el) el.textContent = '汇率: ' + data.rate.toFixed(4);
-                            
+                            // 为了不破坏原有的 UI 更新流，如果是基础心跳仅更新文本前缀，但不影响沙盘实际底层 JS 取值
+                            if (el && el.textContent.indexOf('在岸价') === -1) { el.textContent = '汇率: ' + data.rate.toFixed(4); }
+                        
                             // 获取到有效汇率后，自动隐藏警告条
                             var warnEl = document.getElementById('exchange-rate-warning');
                             if (warnEl) warnEl.style.display = 'none';

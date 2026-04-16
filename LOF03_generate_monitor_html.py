@@ -43,8 +43,14 @@ def get_exchange_rate():
         basic_df = data_processor.read_basic_data()
         if not basic_df.empty:
             latest_rate = basic_df.iloc[0].get('人民币中间价', 0)
-            if latest_rate and latest_rate > 0:
-                today_exchange_rate = f"汇率: {latest_rate:.4f}"
+            spot_rate = basic_df.iloc[0].get('人民币在岸价', 0)
+            rate_strs = []
+            if pd.notna(latest_rate) and latest_rate != '' and float(latest_rate) > 0:
+                rate_strs.append(f"中间价: {float(latest_rate):.4f}")
+            if pd.notna(spot_rate) and spot_rate != '' and float(spot_rate) > 0:
+                rate_strs.append(f"在岸价: {float(spot_rate):.4f}")
+            if rate_strs:
+                today_exchange_rate = "汇率 - " + " | ".join(rate_strs)
     except Exception as e:
         print(f"获取汇率失败: {e}")
     return today_exchange_rate
@@ -129,8 +135,17 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
     
     # 获取真正的今日汇率（严禁使用历史数据替代）
     today_exchange_rate_float = 0.0
+    rate_header_name = "人民币中间价"
+    rate_type = fund.get('rate_type', 'midpoint')
+    
     if basic_df is not None and not basic_df.empty:
-        latest_er = basic_df.iloc[0].get('人民币中间价', 0)
+        if rate_type == 'spot' and '人民币在岸价' in basic_df.columns:
+            latest_er = basic_df.iloc[0].get('人民币在岸价', 0)
+            if pd.isna(latest_er) or latest_er == '' or float(latest_er) <= 0:
+                latest_er = basic_df.iloc[0].get('人民币中间价', 0)
+        else:
+            latest_er = basic_df.iloc[0].get('人民币中间价', 0)
+            
         if pd.notna(latest_er) and latest_er != '':
             try:
                 if float(latest_er) > 0:
@@ -416,7 +431,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
         # 生成历史数据行
         history_rows += f"""
         <tr class="secondary-page-row"><td class="num-font">{d_T.strftime('%m-%d')}</td><td>{exchange_rate_str}</td><td>{nav_str}</td><td class="secondary-close-price">{secondary_close_str}</td>{etf_td_html}<td class="num-font col-etf-bg" style="color:#d35400; font-weight:bold">{est_val_str}</td><td class="num-font col-etf-bg {etf_premium_cls}"><b>{etf_premium_str}</b></td><td class="num-font col-etf-bg {etf_val_err_cls}">{etf_val_err_str}</td><td class="col-future-bg">{future_settle_str}</td><td class="num-font col-future-bg" style="color:#1976d2; font-weight:bold">{future_static_val}</td><td class="num-font col-future-bg {future_premium_cls}"><b>{future_premium_str}</b></td><td class="num-font col-future-bg {future_val_err_cls}">{future_val_err_str}</td><td><button class="btn-verify" onclick="toggleVerify('{uid}')">▶ 验算</button></td></tr>
-        <tr id="verify-{uid}" class="verify-row secondary-page-row"><td colspan="{colspan_main}"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>人民币中间价</th><th>净值</th>{etf_th_html}<th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
+        <tr id="verify-{uid}" class="verify-row secondary-page-row"><td colspan="{colspan_main}"><div class="verify-wrapper"><table class="check-table"><thead><tr><th>项</th><th>📅 日期</th><th>{rate_header_name}</th><th>净值</th>{etf_th_html}<th class="col-est">ETF静态净值</th><th>期货结算价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货静态净值</th></tr></thead><tbody>
         <tr><td>本期(T)</td><td>{d_T.strftime('%m-%d')}</td><td>{exchange_rate_str}</td><td>{nav_str} {html_generator.pill_html(n_T, n_T1, True)}</td>{etf_td_html}<td class="col-est">{est_val_str} {html_generator.pill_html(cur_est_val, n_T1) if can_calc else ""}</td><td>{future_settle_str}</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">{future_static_val}</td></tr>
         <tr><td>基准(T-1)</td><td>{d_T1.strftime('%m-%d') if d_T1 else '无'}</td><td>{t1_exchange_rate_str}</td><td>{t1_nav_str} {html_generator.pill_html(n_T1, n_T2, True) if d_T2 else ""}</td>{etf_td_html_t1}<td>-</td><td>{future_settle_str_t1}</td><td>-</td></tr>
         </tbody></table></div></td></tr>"""
@@ -462,7 +477,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                 <td><button class="btn-verify" onclick="toggleVerify('{f_uid}')">▶ 验算</button></td>
             </tr>
             <tr id="verify-{f_uid}" class="verify-row secondary-page-row"><td colspan="9"><div class="verify-wrapper"><table class="check-table">
-            <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>人民币中间价</th><th>{future_symbol} 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
+            <thead><tr><th>项</th><th>📅 日期</th><th>净值</th><th>{rate_header_name}</th><th>{future_symbol} 收盘价</th><th class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">期货估值</th></tr></thead><tbody>
             <tr><td>本期(T)</td><td>{d_T.strftime('%m-%d')}</td><td>{nav_str} {html_generator.pill_html(n_T, n_T1, True)}</td><td>{exchange_rate_str}</td><td>{f_c_str}</td><td class="col-est" style="border-left: 2px solid #bbdefb; background-color: #e3f2fd50; color:#1976d2;">{f_val_str} {html_generator.pill_html(f_val_T, n_T1) if f_val_T > 0 else ""}</td></tr>
             <tr><td>基准(T-1)</td><td>{d_T1.strftime('%m-%d') if d_T1 else '无'}</td><td>{t1_nav_str} {html_generator.pill_html(n_T1, n_T2, True) if d_T2 else ""}</td><td>{t1_exchange_rate_str}</td><td>{f_c_T1_str}</td><td>-</td></tr>
             </tbody></table></div></td></tr>"""
@@ -594,12 +609,12 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                                 break
                         
                         if base_exchange_rate <= 0:
-                            continue # 没有找到基准汇率，严禁使用固定值，强制熔断
+                            raise ValueError("没有找到基准汇率，严禁使用固定值，强制熔断")
                         
                         # 严禁降级！获取当期真实汇率，若无则熔断
                         current_exchange_rate = today_exchange_rate_float
                         if current_exchange_rate <= 0:
-                            continue
+                            raise ValueError("没有找到今日汇率，严禁使用固定值，强制熔断")
                         
                         # 计算汇率变化率
                         exchange_rate_change = current_exchange_rate / base_exchange_rate
@@ -699,12 +714,12 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                                 break
                         
                         if base_exchange_rate <= 0:
-                            continue # 没有找到基准汇率，严禁使用固定值，强制熔断
+                            raise ValueError("没有找到基准汇率，严禁使用固定值，强制熔断")
                         
                         # 严禁降级！获取当期真实汇率，若无则熔断
                         current_exchange_rate = today_exchange_rate_float
                         if current_exchange_rate <= 0:
-                            continue
+                            raise ValueError("没有找到今日汇率，严禁使用固定值，强制熔断")
                         
                         exchange_rate_change = current_exchange_rate / base_exchange_rate
                         futures_etf = future_price / oil_calib
@@ -792,12 +807,12 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                                 break
                         
                         if base_exchange_rate <= 0:
-                            continue # 没有找到基准汇率，严禁使用固定值，强制熔断
+                            raise ValueError("没有找到基准汇率，严禁使用固定值，强制熔断")
                         
                         # 严禁降级！获取当期真实汇率，若无则熔断
                         current_exchange_rate = today_exchange_rate_float
                         if current_exchange_rate <= 0:
-                            continue
+                            raise ValueError("没有找到今日汇率，严禁使用固定值，强制熔断")
                         
                         exchange_rate_change = current_exchange_rate / base_exchange_rate
                         
@@ -1133,7 +1148,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                                     <select id="trade-broker-{code}-etf" style="font-size:11px; padding:1px; border:1px solid #ffcdd2; border-radius:3px; background:#fff; color:#d32f2f; font-weight:bold; cursor:pointer;" title="选择实盘交易通道">
                                         <option value="yinhe_qmt">银河QMT (8888)</option>
                                         <option value="guojin_qmt">国金QMT (原生)</option>
-                                        <option value="tdx">普通通达信</option>
+                                        <option value="tdx">通达信(暂无下单功能)</option>
                                     </select>
                                     <span style="font-weight:bold; color:#d32f2f; font-size:11px;">{name}:</span>
                                     <span style="color:#666; font-size: 11px;">数量:</span>
@@ -1297,7 +1312,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead style="position: sticky; top: 0; background-color: #e3f2fd; z-index: 10;">
                         <tr>
-                            <th>日期</th><th>人民币中间价</th><th>净值</th><th>收盘价</th>{etf_th_html}<th class="col-etf-bg-th">ETF静态净值</th><th class="col-etf-bg-th">ETF溢价</th><th class="col-etf-bg-th">ETF估值误差</th><th class="col-future-bg-th">期货结算价</th><th class="col-future-bg-th">期货静态净值</th><th class="col-future-bg-th">期货溢价</th><th class="col-future-bg-th">期货估值误差</th><th>验算</th>
+                            <th>日期</th><th>{rate_header_name}</th><th>净值</th><th>收盘价</th>{etf_th_html}<th class="col-etf-bg-th">ETF静态净值</th><th class="col-etf-bg-th">ETF溢价</th><th class="col-etf-bg-th">ETF估值误差</th><th class="col-future-bg-th">期货结算价</th><th class="col-future-bg-th">期货静态净值</th><th class="col-future-bg-th">期货溢价</th><th class="col-future-bg-th">期货估值误差</th><th>验算</th>
                         </tr>
                     </thead>
                     <tbody>{history_rows}</tbody>
@@ -1322,7 +1337,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead style="position: sticky; top: 0; background-color: #e3f2fd; z-index: 10;">
                             <tr>
-                                <th>日期</th><th>人民币中间价</th><th>{future_symbol}收盘价</th><th>期货估值</th><th>收盘价</th><th>期货溢价</th><th>净值</th><th>估值误差比例</th><th>验算</th>
+                                <th>日期</th><th>{rate_header_name}</th><th>{future_symbol}收盘价</th><th>期货估值</th><th>收盘价</th><th>期货溢价</th><th>净值</th><th>估值误差比例</th><th>验算</th>
                             </tr>
                         </thead>
                         <tbody>{futures_history_rows}</tbody>
@@ -1417,7 +1432,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                 <!-- 【区域名称：LOF价格区】包含人民币中间价、A股LOF测试单价等 -->
                     <div style="background: #ffffff; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;">
-                        <span style="color:#1976d2; font-size:13px; font-weight:bold;">人民币中间价:</span>
+                        <span style="color:#1976d2; font-size:13px; font-weight:bold;">{rate_header_name}:</span>
                         <span class="num-font" id="sb-exchange-rate-{code}" style="font-size: 15px; font-weight: bold; color: #1976d2;">{latest_exchange_rate if latest_exchange_rate > 0 else '-'}</span>
                         <span style="color:#d32f2f; font-size:13px; font-weight:bold;">A股 LOF 测试单价:</span>
                         <input type="number" id="sb-target-price-{code}" step="0.001" style="width: 95px; padding: 4px; font-size: 14px; font-family:Consolas; border: 1px solid #ccc; border-radius: 4px; color:#d32f2f; font-weight:bold;" title="手动输入测试单价" oninput="window.calcSandbox('{code}'); window.calcFutureSandbox('{code}'); window.calcPureFutureSandbox('{code}')">
@@ -1797,6 +1812,21 @@ def generate(futures_data=None, ib_data=None):
             if base_future_price > 0 and base_nav > 0 and position > 0 and base_exchange_rate is not None:
                 fut_hedge_value = (base_future_price * base_exchange_rate) / (base_nav * position)
             
+            # 提取 JS 沙盘实时运算专用汇率
+            today_er_for_js = 0.0
+            rate_type = fund.get('rate_type', 'midpoint')
+            if not basic_df.empty:
+                if rate_type == 'spot' and '人民币在岸价' in basic_df.columns:
+                    latest_er_js = basic_df.iloc[0].get('人民币在岸价', 0)
+                    if pd.isna(latest_er_js) or latest_er_js == '' or float(latest_er_js) <= 0:
+                        latest_er_js = basic_df.iloc[0].get('人民币中间价', 0)
+                else:
+                    latest_er_js = basic_df.iloc[0].get('人民币中间价', 0)
+                if pd.notna(latest_er_js) and latest_er_js != '':
+                    try:
+                        today_er_for_js = float(latest_er_js)
+                    except: pass
+
             js_fund_base_data[code] = {
                 'name': fund.get('name', '未知基金'),
                 'baseNav': float(base_nav),
@@ -1812,7 +1842,8 @@ def generate(futures_data=None, ib_data=None):
                 'rmbExposure': rmb_exposure,
                 'futHedgeValue': fut_hedge_value,
                 'latestCalibrationFactor': latest_calibration_factor,
-                'latestExchangeRate': latest_exchange_rate
+                'latestExchangeRate': latest_exchange_rate,
+                'todayExchangeRate': today_er_for_js
             }
     
     home_rows_main = ""
@@ -1965,12 +1996,7 @@ def generate(futures_data=None, ib_data=None):
                     return 0;
                 }
                 
-                var todayExchangeRate = null;
-                var exchangeRateElement = document.getElementById('exchange-rate-display');
-                if (exchangeRateElement) {
-                    var match = exchangeRateElement.textContent.match(/汇率: ([\d.]+)/);
-                    if (match) todayExchangeRate = parseFloat(match[1]);
-                }
+                var todayExchangeRate = baseData.todayExchangeRate;
                 if (!todayExchangeRate || todayExchangeRate <= 0) {
                     return 0; // 彻底没有有效汇率，强制熔断返回0
                 }
@@ -2015,14 +2041,8 @@ def generate(futures_data=None, ib_data=None):
                 var baseData = window.fundBaseData[code];
                 if (!baseData) return;
                 
-                // 获取当前汇率
-                var topFx = document.getElementById('exchange-rate-display');
-                var fxRate = '';
-                if(topFx) {
-                    var match = topFx.textContent.match(/汇率: ([\d.]+)/);
-                    if(match) fxRate = match[1];
-                }
-                
+                // 取后端注入的精确汇率 (避开 DOM 正则匹配导致的格式错乱)
+                var fxRate = baseData.todayExchangeRate || '';
                 // 设置所有三个估值模块的汇率
                 var fxEl = document.getElementById('sb-exchange-rate-' + code);
                 if(fxEl) fxEl.textContent = fxRate;
@@ -2661,6 +2681,12 @@ def generate(futures_data=None, ib_data=None):
             window.executeTrade = function(code, action, sandboxType) {
                 var brokerEl = document.getElementById('trade-broker-' + code + '-' + sandboxType);
                 var broker = brokerEl ? brokerEl.value : 'yinhe_qmt';
+
+                if (broker === 'tdx') {
+                    alert('通达信下单功能因API存在Bug已禁用，请选择其他通道。');
+                    return;
+                }
+
                 // 使用 Emoji 模拟原生系统弹窗的颜色警示效果
                 var brokerNameDisplay = broker === 'yinhe_qmt' ? '🔵【银河QMT】' : (broker === 'guojin_qmt' ? '🟡【国金QMT】' : '🔴【通达信】');
                 
@@ -3010,19 +3036,12 @@ def generate(futures_data=None, ib_data=None):
             
             // 核心功能：前端纯JS无刷新算透期货校准和纯期货两列估值
             window.updateFuturesTableColumns = function(gcPrice, clPrice, nqPrice, esPrice) {
-                var todayExchangeRate = null;
-                var exchangeRateElement = document.getElementById('exchange-rate-display');
-                if (exchangeRateElement) {
-                    var match = exchangeRateElement.textContent.match(/汇率: ([\d.]+)/);
-                    if (match) todayExchangeRate = parseFloat(match[1]);
-                }
-
                 Object.keys(window.fundBaseData).forEach(function(code) {
                     var baseData = window.fundBaseData[code];
                     if (!baseData || !baseData.position) return;
 
                 // 汇率获取：优先用实时，失败则降级到该基金自己的历史汇率
-                var effectiveExchangeRate = todayExchangeRate;
+                var effectiveExchangeRate = baseData.todayExchangeRate;
                 if (!effectiveExchangeRate || effectiveExchangeRate <= 0) {
                     if (baseData && baseData.latestExchangeRate) {
                         effectiveExchangeRate = baseData.latestExchangeRate;
@@ -3148,7 +3167,8 @@ def generate(futures_data=None, ib_data=None):
                     .then(data => {
                         if (data.rate) {
                             var el = document.getElementById('exchange-rate-display');
-                            if (el) el.textContent = '汇率: ' + data.rate.toFixed(4);
+                            // 为了不破坏原有的 UI 更新流，如果是基础心跳仅更新文本前缀，但不影响沙盘实际底层 JS 取值
+                            if (el && el.textContent.indexOf('在岸价') === -1) { el.textContent = '汇率: ' + data.rate.toFixed(4); }
                         
                             // 获取到有效汇率后，自动隐藏警告条
                             var warnEl = document.getElementById('exchange-rate-warning');
