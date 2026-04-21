@@ -13,6 +13,8 @@ class HTTPClient:
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
+        # 强制清除系统代理，防止WinError 10061连接拒绝
+        self.session.proxies.update({"http": None, "https": None})
         self.retry_count = 3
         self.retry_delay = 1.0
     

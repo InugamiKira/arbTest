@@ -8,6 +8,8 @@
 """
 
 import os
+# 强制全局禁用系统代理，防止所有爬虫和API请求报错 WinError 10061
+os.environ['NO_PROXY'] = '*'
 import re
 import json
 import requests
@@ -21,12 +23,12 @@ import time
 import traceback
 
 # 导入公共数据获取模块
-from readers.data_fetcher import data_fetcher
+from arbcore.fetchers.data_fetcher import data_fetcher
 import json
 from bs4 import BeautifulSoup
 
 # 导入Woody网页爬虫模块
-from LOF013_woody_web_crawler import WoodyWebCrawler
+from arbcore.fetchers.woody_web_crawler import WoodyWebCrawler
 
 # 导入API模块
 try:

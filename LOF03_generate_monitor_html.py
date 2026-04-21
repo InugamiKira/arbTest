@@ -10,12 +10,16 @@ import datetime
 import webbrowser
 import subprocess
 import json
+import sqlite3
 
 # 初始化路径
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(SCRIPT_DIR, "data")
 CONFIG_FILE = os.path.join(SCRIPT_DIR, "lof_config.yaml")
 OUTPUT_FILE = os.path.join(SCRIPT_DIR, "lof_monitor.html")
+
+# 共享数据库路径
+SHARED_DB_PATH = r"D:\Study\arbTest\ETFRotate\data\etf_rotation.db"
 
 # 导入模块
 sys.path.insert(0, SCRIPT_DIR)
@@ -1526,8 +1530,12 @@ def check_and_update_historical_data():
             break
         
         # 读取文件并检查最新日期
+        table_name = f"lof_history_{code}"
         try:
             df = pd.read_csv(file_path, encoding='utf-8-sig')
+            conn = sqlite3.connect(SHARED_DB_PATH)
+            df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
+            conn.close()
             
             # 确保日期列存在
             if 'date' not in df.columns:
@@ -1561,17 +1569,21 @@ def check_and_update_historical_data():
                     
                     if latest_date < today:
                         print(f"提示: 基金 {code} 的历史数据日期({latest_date})小于今天，需要更新")
+                        print(f"提示: 基金 {code} 的 SQLite 数据日期({latest_date})小于今天，需要更新")
                         need_update = True
                 else:
                     print(f"警告: 基金 {code} 的历史数据文件为空，需要更新")
+                    print(f"警告: 基金 {code} 的 SQLite 表为空，需要更新")
                     need_update = True
                     break
             else:
                 print(f"警告: 基金 {code} 的历史数据文件没有日期列，需要更新")
+                print(f"警告: 基金 {code} 的 SQLite 表没有日期列，需要更新")
                 need_update = True
                 break
         except Exception as e:
             print(f"读取基金 {code} 的历史数据文件失败: {e}")
+            print(f"读取基金 {code} 的 SQLite 表失败: {e}")
             need_update = True
             break
     
@@ -3711,6 +3723,14 @@ def generate(futures_data=None, ib_data=None):
                     latest_value = df[symbol].dropna().tail(1)
                     if not latest_value.empty:
                         return f"{latest_value.iloc[0]:.2f}"
+            conn = sqlite3.connect(SHARED_DB_PATH)
+            df = pd.read_sql("SELECT * FROM basic_data", conn)
+            conn.close()
+            if symbol in df.columns:
+                # 获取最新的非空值
+                latest_value = df[symbol].dropna().tail(1)
+                if not latest_value.empty:
+                    return f"{latest_value.iloc[0]:.2f}"
         except Exception:
             pass
         # 本地数据不可用时，再尝试使用IB数据

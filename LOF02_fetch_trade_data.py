@@ -5,6 +5,8 @@
 import requests
 import re
 import os
+# 强制全局禁用系统代理，防止所有爬虫和API请求报错 WinError 10061
+os.environ['NO_PROXY'] = '*'
 import sys
 import subprocess
 import threading
@@ -19,6 +21,9 @@ import socket
 import time
 import atexit
 import logging
+
+# 导入 ArbCore 公共基座中的数据库管理器
+from arbcore.database.db_manager import DatabaseManager
 
 # 设置ibapi模块的日志级别，避免大量DEBUG信息刷屏
 logging.getLogger('ibapi').setLevel(logging.WARNING)
@@ -573,7 +578,7 @@ class DataFetcher:
             exchange_prefix = 'sh' if fund_code.startswith('5') else 'sz'
             sina_code = f"{exchange_prefix}{fund_code}"
             price_url = f"https://hq.sinajs.cn/list={sina_code}"
-            price_response = requests.get(price_url, headers=self.sina_headers, timeout=5)
+            price_response = requests.get(price_url, headers=self.sina_headers, timeout=5, proxies={"http": None, "https": None})
             price = None
             if price_response.status_code == 200:
                 match = re.search(r'"([^"]+)"', price_response.text)
@@ -589,7 +594,7 @@ class DataFetcher:
             nav_headers = {'Referer': 'http://fundf10.eastmoney.com/'}
             nav = None
             try:
-                nav_response = requests.get(nav_url, headers=nav_headers, timeout=5)
+                nav_response = requests.get(nav_url, headers=nav_headers, timeout=5, proxies={"http": None, "https": None})
                 nav_data = nav_response.json()
                 if nav_data.get('Data') and nav_data['Data'].get('LSJZList'):
                     nav = float(nav_data['Data']['LSJZList'][0]['DWJZ'])
@@ -643,7 +648,7 @@ class SinaFuturesReader:
         futures_data = {'GC': 0, 'CL': 0, 'NQ': 0, 'ES': 0}
         try:
             time.sleep(random.uniform(1, 3))
-            res = requests.get(url, headers=self.headers, timeout=10)
+            res = requests.get(url, headers=self.headers, timeout=10, proxies={"http": None, "https": None})
             res.encoding = 'gbk'
             if res.status_code == 200:
                 for line in res.text.strip().split('\n'):
@@ -772,7 +777,7 @@ class SSEFuturesReader:
         url = "https://81.futsseapi.eastmoney.com/sse/113_agm_qt"
         try:
             print("[SSEReader] 正在拉取东财SSE白银快照...")
-            res = requests.get(url, headers={'Accept':'text/event-stream'}, stream=True, timeout=(5,10), verify=False)
+            res = requests.get(url, headers={'Accept':'text/event-stream'}, stream=True, timeout=(5,10), verify=False, proxies={"http": None, "https": None})
             for i, line in enumerate(res.iter_lines()):
                 if line and line.decode('utf-8').startswith('data:'):
                     try:
@@ -809,7 +814,7 @@ class SSEFuturesReader:
                 time.sleep(10)
                 continue
             try:
-                res = requests.get(url, stream=True, timeout=(5,30), verify=False)
+                res = requests.get(url, stream=True, timeout=(5,30), verify=False, proxies={"http": None, "https": None})
                 if res.status_code == 200:
                     if not self.connected:
                         print("[SSEReader] 🔗 东财SSE白银长连接建立成功，等待推送...")
@@ -1058,7 +1063,7 @@ class LOFPriceReader:
                     # ======== 模式三：新浪外网爬虫兜底 ========
                     qs = [f"{'sh' if c.startswith('5') else 'sz'}{c}" for c in self.lof_codes]
                     for i in range(0, len(qs), 40):
-                        res = requests.get(f"https://hq.sinajs.cn/list={','.join(qs[i:i+40])}", headers=self.headers, timeout=10)
+                        res = requests.get(f"https://hq.sinajs.cn/list={','.join(qs[i:i+40])}", headers=self.headers, timeout=10, proxies={"http": None, "https": None})
                         res.encoding = 'gbk'
                         for line in res.text.strip().split('\n'):
                             match = re.search(r'hq_str_[a-z]{2}(\d{6})="([^"]+)"', line)
@@ -1125,36 +1130,6 @@ class FuturePriceService:
         self.sina_reader.update_prices()
         if not self.sse_reader.running:
             self.sse_reader.update_ag0_price()
-
-class DatabaseManager:
-    def __init__(self):
-        os.makedirs('data', exist_ok=True)
-        self.db_path = 'data/lof_arb.db'
-        self.init_db()
-        
-    def _get_conn(self):
-        conn = sqlite3.connect(self.db_path, timeout=15.0)
-        conn.execute('PRAGMA journal_mode=WAL;')
-        return conn
-    
-    def init_db(self):
-        conn = self._get_conn()
-        conn.execute('CREATE TABLE IF NOT EXISTS lof_data (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, fund_code TEXT, price REAL, nav REAL, premium REAL, created_at TEXT, UNIQUE(date, fund_code))')
-        conn.execute('CREATE TABLE IF NOT EXISTS futures_data (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER, symbol TEXT, price REAL, source TEXT, created_at TEXT)')
-        conn.commit()
-        conn.close()
-        
-    def save_lof_data(self, date, fund_code, price, nav, premium):
-        conn = self._get_conn()
-        conn.execute('INSERT OR REPLACE INTO lof_data (date, fund_code, price, nav, premium, created_at) VALUES (?, ?, ?, ?, ?, ?)', (date, fund_code, price, nav, premium, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-        conn.commit()
-        conn.close()
-        
-    def save_futures_data(self, symbol, price, source):
-        conn = self._get_conn()
-        conn.execute('INSERT INTO futures_data (timestamp, symbol, price, source, created_at) VALUES (?, ?, ?, ?, ?)', (int(time.time()), symbol, price, source, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-        conn.commit()
-        conn.close()
 
 db_manager = DatabaseManager()
 future_service = FuturePriceService()

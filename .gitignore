@@ -12,6 +12,7 @@ __pycache__/
 ibapi/
 _mytoken.py
 telegram.py
+woodymain.py
 # 脚本、测试
 
 # 数据库、日志、临时文件
