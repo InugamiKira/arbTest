@@ -1,27 +1,48 @@
-# 虚拟环境
-.venv/
+# AI 隐私文件
+.gemini
+GEMINI.md
+000_AI_Context.md
 
-# Python 缓存
+# ====================
+# 调试过程（全部不上传）
+# ====================
+LOFarb/ibapi/
+LOFarb/my-ai/
+LOFarb/AGENTS/
+
+**/_mytoken.py
+woodyAPI/
+woodykey轮动demo/
+
+ETFRotate/
+scripts/
+test_read_data/
+公众号/
+LOFarb/LOF004*.py
+
+# ====================
+# Python 缓存垃圾
+# ====================
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
 
-# 编辑器配置
+# ====================
+# IDE 系统配置
+# ====================
 .vscode/
+.idea/
+.DS_Store
 
-# 项目依赖/第三方库
-ibapi/
-_mytoken.py
-telegram.py
-woodymain.py
-# 脚本、测试
+# ====================
+# 日志文件
+# ====================
+*.log
 
-# 数据库、日志、临时文件
-*.db
-*.jsonl
-
-# 备份、说明文档
-.git.bak/
-scripts/
-Test_read_data/
-公众号/
-zGIT使用办法.txt
+# ====================
+# 放行（允许上传）
+# ====================
+# database/ 目录 & *.db 允许上传
