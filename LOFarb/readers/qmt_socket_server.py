@@ -1,6 +1,6 @@
 # encoding: gbk
 # =================================================================
-# v4.11 沙盘推演版 - 银河QMT Socket Server端策略 2026-4-26
+# v4.2 沙盘推演版 - 银河QMT Socket Server端策略 2026-4-27
 # =================================================================
 import socket
 import threading
@@ -101,7 +101,7 @@ def broadcast_message(msg):
 
 def init(ContextInfo):
     global g_account_id, g_context
-    print("\n[策略日志] 加载 v4.11 沙盘推演版 Socket 策略 (防崩溃版)...")
+    print("\n[策略日志] 加载 v4.2 沙盘推演版 Socket 策略 (防崩溃版)...")
     g_account_id = '230500059288'
     g_context = ContextInfo
     ContextInfo.set_account(g_account_id)
@@ -117,19 +117,9 @@ def push_ticks():
     if not g_context or not g_subscribed_stocks or len(g_active_clients) == 0: return
     with g_api_lock:
         try:
-            # 核心优化：抛弃极易报错的批量查询，改为逐个查询（与短链接QUERY_TICK相同的稳定逻辑）
-            ticks = {}
-            for code in list(g_subscribed_stocks):
-                try:
-                    res = g_context.get_full_tick([code])
-                    if res and code in res:
-                        ticks[code] = res[code]
-                except: pass
-                
-            if not ticks:
-                broadcast_message("DEBUG, QMT底层API拒绝返回任何数据 (大概率被UI懒加载拦截了)\n")
-                return
-                
+            # 听从架构师的指引：回归极致性能！直接传入全量列表让C++引擎一次性并发处理！
+            ticks = g_context.get_full_tick(list(g_subscribed_stocks))    
+            
             for code, tick in ticks.items():
                 if not tick or not isinstance(tick, dict): continue
                 
