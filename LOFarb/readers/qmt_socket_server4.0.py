@@ -1,36 +1,50 @@
 # encoding: gbk
 # =================================================================
-# v4.11 沙盘推演版 - 银河QMT Socket Server端策略 2026-4-26
+# v4.0 绝杀版
+# 运行在 QMT 内部的策略代码 (同步并发锁架构)
+# - 彻底解决盘后 QMT 引擎休眠导致的超时问题
+# - 使用互斥锁(Mutex)保护 C++ 引擎，绝对防止死锁
+# - 短链接查询毫秒级响应，长连接行情丝滑推送
 # =================================================================
 import socket
 import threading
 import time
 
 g_context = None
-g_api_lock = threading.Lock()
+g_api_lock = threading.Lock() # 保护 QMT 底层 API 的并发锁
+
 g_account_id = "" 
 g_active_clients = []
 g_clients_lock = threading.Lock()
 g_subscribed_stocks = set()
 
 def client_handler(conn, addr):
-    with g_clients_lock: g_active_clients.append(conn)
+    print(f"? 新客户端接入: {addr}")
+    with g_clients_lock:
+        g_active_clients.append(conn)
+    
     buffer = ""
     try:
         while True:
             data = conn.recv(1024).decode('utf-8')
             if not data: break
+            
             buffer += data
             while '\n' in buffer:
                 cmd_str, buffer = buffer.split('\n', 1)
-                if cmd_str: process_command_sync(conn, cmd_str.strip())
-    except Exception: pass
+                if cmd_str:
+                    process_command_sync(conn, cmd_str.strip())
+    except Exception:
+        pass
     finally:
+        print(f"?? 客户端断开: {addr}")
         with g_clients_lock:
-            if conn in g_active_clients: g_active_clients.remove(conn)
+            if conn in g_active_clients:
+                g_active_clients.remove(conn)
         conn.close()
 
 def process_command_sync(conn, cmd_str):
+    """同步处理指令：直接在当前线程响应，告别排队和休眠超时"""
     global g_context, g_account_id, g_subscribed_stocks
     parts = cmd_str.split(',')
     action = parts[0].upper()
@@ -38,39 +52,42 @@ def process_command_sync(conn, cmd_str):
     if action == 'PING':
         try: conn.sendall(b'PONG\n')
         except: pass
+
     elif action == 'QUERY_TICK' and len(parts) >= 2:
         code = parts[1].strip()
         response = f"TICK_RESULT,{code} | 暂无数据"
         if g_context:
-            with g_api_lock:
+            with g_api_lock: # 加锁保护 C++ 引擎
                 try:
                     ticks = g_context.get_full_tick([code])
                     if code in ticks:
                         tick = ticks[code]
                         response = f"TICK_RESULT,{code} | 最新/收盘价:{tick.get('lastPrice', 0)} | 昨收:{tick.get('lastClose', 0)}"
-                except Exception as e: response = f"TICK_RESULT,{code} | 查询异常: {e}"
+                except Exception as e:
+                    response = f"TICK_RESULT,{code} | 查询异常: {e}"
         try: conn.sendall((response + '\n').encode('utf-8'))
         except: pass
+
     elif action in ['BUY', 'SELL'] and len(parts) >= 4:
         code, volume, price = parts[1], int(parts[2]), float(parts[3])
         opType = 23 if action == 'BUY' else 24
         if g_context:
-            with g_api_lock:
+            with g_api_lock: # 加锁保护 C++ 引擎
                 try:
                     msg = f"Socket_{action}_{code}"
                     passorder(opType, 1101, g_account_id, code, 11, price, volume, 'SocketTrade', 1, msg, g_context)
-                except Exception as e: print(f"Passorder Error: {e}")
+                    print(f"Order Sent: {action} {code} {volume} @ {price}")
+                except Exception as e:
+                    print(f"Passorder Error: {e}")
         try: conn.sendall(b'OK\n')
         except: pass
+
     elif action == 'SUBSCRIBE' and len(parts) > 1:
         new_stocks = [p.strip() for p in parts[1:] if p.strip()]
         g_subscribed_stocks.update(new_stocks)
-        
+        print(f"? 订阅成功，已加入轮询列表: {new_stocks}")
         try: conn.sendall(b'SUBSCRIBE_OK\n')
         except: pass
-        try: conn.sendall(f"DEBUG, 开始为您提取 {new_stocks} 的盘口数据...\n".encode('utf-8'))
-        except: pass
-        push_ticks()  # 核心：破除周末休眠
 
 def socket_server_thread():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -78,9 +95,9 @@ def socket_server_thread():
     try:
         server.bind(('127.0.0.1', 8888))
         server.listen(5)
-        print("? 银河QMT Socket Server Started. Listening on 8888...")
+        print("? QMT Socket Server Started. Listening on 8888...")
     except Exception as e:
-        print(f"❌ 致命错误：端口 8888 被占用！请彻底重启QMT软件！详细报错: {e}")
+        print(f"? 无法绑定端口 8888: {e}")
         return
         
     while True:
@@ -89,7 +106,8 @@ def socket_server_thread():
             t = threading.Thread(target=client_handler, args=(conn, addr))
             t.setDaemon(True)
             t.start()
-        except Exception: time.sleep(1)
+        except Exception:
+            time.sleep(1)
 
 def broadcast_message(msg):
     with g_clients_lock:
@@ -97,11 +115,12 @@ def broadcast_message(msg):
         for client_conn in g_active_clients:
             try: client_conn.sendall(msg.encode('utf-8'))
             except Exception: dead_clients.append(client_conn)
-        for dead in dead_clients: g_active_clients.remove(dead)
+        for dead in dead_clients:
+            g_active_clients.remove(dead)
 
 def init(ContextInfo):
     global g_account_id, g_context
-    print("\n[策略日志] 加载 v4.11 沙盘推演版 Socket 策略 (防崩溃版)...")
+    print("\n[策略日志] 加载 v4.0 绝杀版 Socket 策略 (同步并发锁)...")
     g_account_id = '230500059288'
     g_context = ContextInfo
     ContextInfo.set_account(g_account_id)
@@ -111,46 +130,36 @@ def init(ContextInfo):
     t.start()
     
     ContextInfo.run_time("check_tasks", "1nSecond", "2020-01-01 09:30:00")
+    print("QMT Engine Initialized (v4.0 Mode).")
 
 def push_ticks():
     global g_context, g_subscribed_stocks
-    if not g_context or not g_subscribed_stocks or len(g_active_clients) == 0: return
+    if not g_context or not g_subscribed_stocks or len(g_active_clients) == 0:
+        return
     with g_api_lock:
         try:
-            # 核心优化：抛弃极易报错的批量查询，改为逐个查询（与短链接QUERY_TICK相同的稳定逻辑）
-            ticks = {}
-            for code in list(g_subscribed_stocks):
-                try:
-                    res = g_context.get_full_tick([code])
-                    if res and code in res:
-                        ticks[code] = res[code]
-                except: pass
-                
-            if not ticks:
-                broadcast_message("DEBUG, QMT底层API拒绝返回任何数据 (大概率被UI懒加载拦截了)\n")
-                return
-                
+            ticks = g_context.get_full_tick(list(g_subscribed_stocks))                
             for code, tick in ticks.items():
-                if not tick or not isinstance(tick, dict): continue
-                
-                # 终极防御：处理 QMT 返回 Tuple 或 None 导致的拼接崩溃问题
-                def safe_list(val):
-                    if isinstance(val, (list, tuple)): return list(val) + [0]*5
-                    return [0]*5
-                    
-                ap = safe_list(tick.get('askPrice'))
-                av = safe_list(tick.get('askVol'))
-                bp = safe_list(tick.get('bidPrice'))
-                bv = safe_list(tick.get('bidVol'))
-                
-                msg = f"TICK,{code},{tick.get('lastPrice', 0)},{tick.get('volume', 0)},{ap[0]},{av[0]},{ap[1]},{av[1]},{bp[0]},{bv[0]},{bp[1]},{bv[1]},{tick.get('timetag', '')}\n"
+                msg = f"TICK,{code},{tick.get('lastPrice', 0)},{tick.get('volume', 0)},{tick.get('timetag', '')}\n"
                 broadcast_message(msg)
-        except Exception as e:
-            broadcast_message(f"ERROR, push_ticks 发生致命错误: {e}\n")
-            print(f"❌ [推流异常] push_ticks 发生错误: {e}")
+        except Exception:
+            pass
 
-def check_tasks(ContextInfo): push_ticks()
-def handlebar(ContextInfo): push_ticks()
-def orderError_callback(ContextInfo, passOrderInfo, msg): pass
-def deal_callback(ContextInfo, dealInfo): pass
+def check_tasks(ContextInfo):
+    push_ticks()
+
+def handlebar(ContextInfo):
+    push_ticks()
+
+def orderError_callback(ContextInfo, passOrderInfo, msg):
+    error_msg = f"[API Error] Code: {passOrderInfo.orderCode}, Reason: {msg}"
+    print(error_msg)
+    broadcast_message(f"ORDER_ERROR,{passOrderInfo.orderCode},{msg}\n")
+
+def deal_callback(ContextInfo, dealInfo):
+    deal_msg = f"[Deal] Code: {dealInfo.m_strInstrumentID}, Price: {dealInfo.m_dPrice}"
+    print(deal_msg)
+    broadcast_message(f"DEAL,{dealInfo.m_strInstrumentID},{dealInfo.m_dPrice},{dealInfo.m_nVolume}\n")
+    
 def order_callback(ContextInfo, orderInfo): pass
+

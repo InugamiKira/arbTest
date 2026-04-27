@@ -492,6 +492,7 @@ class LOFPriceReader:
         self.use_tdx = False
         self.use_qmt = False
         self.use_guojin = False
+        self.start_time = time.time()
         
         # QMT Socket客户端
         self.qmt_client = None
@@ -564,25 +565,35 @@ class LOFPriceReader:
             
             # 【优先级1】尝试挂载银河QMT Socket长连接
             try:
-                def on_qmt_price_update(code, price):
-                    old_price = self.lof_prices.get(code, 0)
-                    self.lof_prices[code] = price
-                    if not hasattr(self, '_qmt_success_logged') and price > 0:
-                        print("  ✅ [行情状态] 银河QMT数据接收成功，行情链路畅通！")
-                        self._qmt_success_logged = True
-                        
-                    # 尝试从 qmt_client 提取完整五档盘口字典
+                def on_qmt_price_update(code, raw_price):
                     clean_code = code.split('.')[0] if '.' in code else code
+                    
+                    # 尝试从 qmt_client 提取完整五档盘口字典
                     order_book = None
                     if hasattr(self, 'qmt_client') and self.qmt_client:
                         order_book = self.qmt_client.get_order_book(clean_code)
                         
+                    # 严格遵循“卖一价”原则，如果卖一价为0（如涨停封板），则兜底使用 raw_price (通常是最新成交价)
+                    price = raw_price
+                    if order_book:
+                        ask1 = float(order_book.get('ask1_p', order_book.get('ask_p1', 0)))
+                        if ask1 > 0:
+                            price = ask1
+                            
+                    old_price = self.lof_prices.get(clean_code, 0)
+                    self.lof_prices[clean_code] = price
+                    
+                    if not hasattr(self, '_qmt_success_logged') and price > 0:
+                        print("  ✅ [行情状态] 银河QMT数据接收成功，行情链路畅通！")
+                        self._qmt_success_logged = True
+                        
                     # 1. 满足你在黑窗口看日志的需求 (为了防止刷屏太快，只在首次或价格变动时打印)
-                    if order_book and (old_price != price or not hasattr(self, '_first_tick_logged')):
-                        ask1 = order_book.get('ask1_p', price)
-                        last_p = order_book.get('last', price)
-                        print(f"⚡ [银河] {clean_code} 价格更新: {price:.3f} (卖一: {ask1:.3f}, 最新: {last_p:.3f})")
-                        self._first_tick_logged = True
+                    log_flag = f'_tick_logged_{clean_code}'
+                    if order_book and (old_price != price or not hasattr(self, log_flag)):
+                        ask1_print = order_book.get('ask1_p', order_book.get('ask_p1', raw_price))
+                        last_p = order_book.get('last_price', raw_price)
+                        print(f"⚡ [银河] {clean_code} 价格更新: {price:.3f} (卖一: {ask1_print:.3f}, 最新: {last_p:.3f})")
+                        setattr(self, log_flag, True)
 
                     # 2. 将五档盘口打包，通过 WebSocket 穿透推送到前端自留地
                     payload = {
@@ -769,36 +780,42 @@ class LOFPriceReader:
                         if self._guojin_err_count > 3:
                             print(f"  ⚠️ [行情告警] 国金QMT接口崩溃 ({e})。自动降级至【新浪API兜底】！")
                             self.use_guojin = False
-                    time.sleep(1) # 本地内存读取，1秒轮询足够高频且不卡死
+            
+                # ======== 终极颗粒度兜底：新浪外网爬虫 ========
+                # 无论什么引擎为主，只要有基金价格是 0（断流或懒加载拦截），新浪立刻补位！
+                current_time = time.time()
+                last_sina_time = getattr(self, '_last_sina_time', 0)
+                
+                # 优雅启动：系统启动前 15 秒绝对不触发新浪兜底，给 QMT 充足的建连和推流时间！
+                if current_time - getattr(self, 'start_time', 0) > 15 and current_time - last_sina_time > 20:
+                    missing_codes = [c for c in self.lof_codes if self.get_price(c.split('.')[0] if '.' in c else c) == 0]
+                    if missing_codes:
+                        qs = [f"{'sh' if c.startswith('5') else 'sz'}{c}" for c in missing_codes]
+                        for i in range(0, len(qs), 40):
+                            try:
+                                res = requests.get(f"https://hq.sinajs.cn/list={','.join(qs[i:i+40])}", headers=self.headers, timeout=10, proxies={"http": None, "https": None})
+                                res.encoding = 'gbk'
+                                for line in res.text.strip().split('\n'):
+                                    match = re.search(r'hq_str_[a-z]{2}(\d{6})="([^"]+)"', line)
+                                    if match:
+                                        code = match.group(1)
+                                        parts = match.group(2).split(',')
+                                        if len(parts) > 7:
+                                            ask_price = float(parts[7])
+                                            last_price = float(parts[3])
+                                            new_price = ask_price if ask_price > 0 else last_price
+                                            if new_price > 0:
+                                                self.lof_prices[code] = new_price
+                                                socketio.emit('lof_price_update', {'code': code, 'price': new_price, 'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3]})
+                            except: pass
+                    self._last_sina_time = current_time
                     
-                else:
-                    # ======== 模式四：新浪外网爬虫兜底 ========
-                    qs = [f"{'sh' if c.startswith('5') else 'sz'}{c}" for c in self.lof_codes]
-                    for i in range(0, len(qs), 40):
-                        res = requests.get(f"https://hq.sinajs.cn/list={','.join(qs[i:i+40])}", headers=self.headers, timeout=10, proxies={"http": None, "https": None})
-                        res.encoding = 'gbk'
-                        for line in res.text.strip().split('\n'):
-                            match = re.search(r'hq_str_[a-z]{2}(\d{6})="([^"]+)"', line)
-                            if match:
-                                code = match.group(1)
-                                parts = match.group(2).split(',')
-                                if len(parts) > 7: # 确保有卖一价字段
-                                    old_price = self.lof_prices.get(code, 0)
-                                    # 优先使用卖一价(parts[7])，如果卖一价为0（比如涨停），则使用最新成交价(parts[3])
-                                    ask_price = float(parts[7])
-                                    last_price = float(parts[3])
-                                    new_price = ask_price if ask_price > 0 else last_price
-                                    self.lof_prices[code] = new_price
-                                    # WebSocket推送LOF价格更新
-                                    if old_price != new_price:
-                                        socketio.emit('lof_price_update', {
-                                            'code': code,
-                                            'price': new_price,
-                                            'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3]
-                                        })
-                    time.sleep(20) # 爬虫间隔必须长于20秒，防止封IP
+                # 引擎休眠控制
+                if self.use_qmt or self.use_guojin: time.sleep(1)
+                elif self.use_tdx: time.sleep(10)
+                else: time.sleep(20)
+
             except: pass
-            time.sleep(20)
 
 class FuturePriceService:
     def __init__(self):
@@ -1097,5 +1114,7 @@ if __name__ == "__main__":
         else:
             print(f"启动服务器失败: {e}")
     except KeyboardInterrupt:
+        print("\n⏹️ [系统] 接收到 Ctrl+C 手动停止信号，正在强制销毁所有后台线程并退出...")
         ib_reader_instance.stop_polling()
+        os._exit(0)
 #

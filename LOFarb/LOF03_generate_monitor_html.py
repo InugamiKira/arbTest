@@ -702,10 +702,8 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                         net_value_change_ratio = pos_float * (weighted_futures_change_rate * exchange_rate_change - 1)
                         future_valuation = nav_home * (1 + net_value_change_ratio)
                         
-                        # 计算期货实时溢价
-                        if latest_valid_close > 0 and future_valuation > 0:
-                            future_premium = (latest_valid_close - future_valuation) / future_valuation * 100
-                            
+                        # 严禁在Python端使用T-1的收盘价计算实时溢价，直接交由前端JS使用最新A股实盘价计算
+                        
                         # 新增：精准期货估值 (利用 T-1 期货收盘价)
                         if futures_history_df is not None and not futures_history_df.empty and base_date is not None:
                             base_date_str = base_date.strftime('%Y-%m-%d') if isinstance(base_date, pd.Timestamp) else str(base_date)[:10]
@@ -727,8 +725,6 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                                 future_change_rate = future_price / base_future_price
                                 net_value_change_ratio_exact = pos_float * (future_change_rate * exchange_rate_change - 1)
                                 exact_future_valuation = nav_home * (1 + net_value_change_ratio_exact)
-                                if latest_valid_close > 0 and exact_future_valuation > 0:
-                                    exact_future_premium = (latest_valid_close - exact_future_valuation) / exact_future_valuation * 100
                 
                 elif category == '原油' and 'CL' in futures_data:
                     future_price = futures_data['CL']['price']
@@ -797,9 +793,8 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                         net_value_change_ratio = pos_float * (weighted_futures_change_rate * exchange_rate_change - 1)
                         future_valuation = nav_home * (1 + net_value_change_ratio)
                         
-                        if latest_valid_close > 0 and future_valuation > 0:
-                            future_premium = (latest_valid_close - future_valuation) / future_valuation * 100
-                            
+                        # 严禁使用过期价格拼凑实时溢价
+                        
                         # 新增：精准期货估值 (利用 T-1 期货收盘价)
                         if futures_history_df is not None and not futures_history_df.empty and base_date is not None:
                             base_date_str = base_date.strftime('%Y-%m-%d') if isinstance(base_date, pd.Timestamp) else str(base_date)[:10]
@@ -819,8 +814,6 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                                 future_change_rate = future_price / base_future_price
                                 net_value_change_ratio_exact = pos_float * (future_change_rate * exchange_rate_change - 1)
                                 exact_future_valuation = nav_home * (1 + net_value_change_ratio_exact)
-                                if latest_valid_close > 0 and exact_future_valuation > 0:
-                                    exact_future_premium = (latest_valid_close - exact_future_valuation) / exact_future_valuation * 100
                 
                 elif category == '指数' and future_symbol and future_symbol in futures_data:
                     future_price = futures_data[future_symbol]['price']
@@ -868,8 +861,6 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                                 future_change_rate = future_price / base_future_price
                                 net_value_change_ratio_exact = pos_float * (future_change_rate * exchange_rate_change - 1)
                                 exact_future_valuation = nav_home * (1 + net_value_change_ratio_exact)
-                                if latest_valid_close > 0 and exact_future_valuation > 0:
-                                    exact_future_premium = (latest_valid_close - exact_future_valuation) / exact_future_valuation * 100
                 
         except Exception as e:
             print(f"获取期货数据失败: {e}")
@@ -921,10 +912,10 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
         # 格式化期货数据
         future_price_str = f"{future_price:.2f}" if future_price > 0 else "-"
         future_valuation_str = f"{future_valuation:.4f}" if future_valuation > 0 else "-"
-        future_premium_str = f"{future_premium:+.2f}%" if future_valuation > 0 else "-"
+        future_premium_str = f"{future_premium:+.2f}%" if future_premium is not None else "-"
         
         # 为期货溢价设置颜色
-        future_premium_cls = "" if future_premium == 0 else ("premium-positive" if future_premium > 0 else "premium-negative")
+        future_premium_cls = "" if future_premium is None or future_premium == 0 else ("premium-positive" if future_premium > 0 else "premium-negative")
         
         # 套利指示灯：<= -0.8% (折价) 红灯闪烁，否则绿灯休眠
         future_light_html = ""
@@ -945,8 +936,8 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
             futures_valuation_display += f'<br><span class="num-font" id="rt-calib-prem-{code}" style="font-size:14px;"></span><span id="rt-calib-light-{code}"></span>'
             
         exact_future_valuation_str = f"{exact_future_valuation:.4f}" if exact_future_valuation > 0 else "-"
-        exact_future_premium_str = f"{exact_future_premium:+.2f}%" if exact_future_valuation > 0 else "-"
-        exact_future_premium_cls = "" if exact_future_premium == 0 else ("premium-positive" if exact_future_premium > 0 else "premium-negative")
+        exact_future_premium_str = f"{exact_future_premium:+.2f}%" if exact_future_premium is not None else "-"
+        exact_future_premium_cls = "" if exact_future_premium is None or exact_future_premium == 0 else ("premium-positive" if exact_future_premium > 0 else "premium-negative")
         exact_future_light_html = ""
         if exact_future_premium_str != '-':
             if exact_future_premium <= -0.8:
@@ -2029,6 +2020,23 @@ def generate(futures_data=None, ib_data=None):
                 }
             });
 
+            // 🌟 接收 A股 五档盘口极速更新 (打通 TAB5 自留地沙盘的"最后一公里")
+            socket.on('lof_order_book_update', function(data) {
+                // 1. 全局缓存最新盘口数据，供沙盘随时提取
+                window.latestOrderBooks = window.latestOrderBooks || {};
+                window.latestOrderBooks[data.code] = data.data;
+                
+                // 2. 尝试直接调用沙盘的渲染函数 (如果您在 LOF004 里定义了这些函数)
+                if (typeof window.renderSniperOrderBook === 'function') {
+                    window.renderSniperOrderBook(data.code, data.data);
+                } else if (typeof window.updateSandboxOrderBook === 'function') {
+                    window.updateSandboxOrderBook(data.code, data.data);
+                }
+                
+                // 3. 广播标准事件，供自留地 JS 监听接管
+                window.dispatchEvent(new CustomEvent('QmtOrderBookUpdate', { detail: data }));
+            });
+
             // 更新时间显示
             function updateTime() {
                 const now = new Date();
@@ -2970,11 +2978,6 @@ def generate(futures_data=None, ib_data=None):
                         var closePriceMatch = closePriceText.match(/\d+(?:\.\d+)?/);
                         var closePrice = closePriceMatch ? parseFloat(closePriceMatch[0]) : 0;
                         
-                        if (closePrice === 0 || (closePrice >= 100000 && closePrice <= 999999)) {
-                            closePrice = staticValuation;
-                            if (closePrice === 0) return;
-                        }
-                        
                         var etfValuationElement = document.getElementById('realtime-valuation-' + code);
                         var etfPremiumElement = document.getElementById('realtime-premium-' + code);
                         var etfLightElement = document.getElementById('realtime-light-' + code);
@@ -3024,22 +3027,32 @@ def generate(futures_data=None, ib_data=None):
                                     etfValuationElement.style.fontWeight = 'bold';
                                 }
 
-                                if (etfPremiumElement) {
-                                    etfPremiumElement.textContent = (etfRealTimePremium >= 0 ? '+' : '') + etfRealTimePremium.toFixed(2) + '%';
-                                    etfPremiumElement.style.color = afterClose ? '#9e9e9e' : (etfRealTimePremium >= 0 ? '#2e7d32' : '#d32f2f');
-                                    etfPremiumElement.style.fontWeight = 'bold';
-                                }
-                                if (etfLightElement) {
-                                    if (afterClose) {
-                                        etfLightElement.innerHTML = '<span class="arb-light" style="background-color:#bdbdbd; opacity:0.6;" title="收盘后由于IB行情限制，已冻结"></span>';
-                                    } else {
-                                        if (etfRealTimePremium <= -0.8) {
-                                            etfLightElement.innerHTML = '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>';
-                                            
+                                // 彻底拦截：如果没有拿到真实的A股实盘价，直接将实时溢价抹除，严禁显示假利润！
+                                if (closePrice > 0 && closePrice < 100000) {
+                                    var etfRealTimePremium = (closePrice - etfRealTimeValuation) / etfRealTimeValuation * 100;
+                                    if (etfPremiumElement) {
+                                        etfPremiumElement.textContent = (etfRealTimePremium >= 0 ? '+' : '') + etfRealTimePremium.toFixed(2) + '%';
+                                        etfPremiumElement.style.color = afterClose ? '#9e9e9e' : (etfRealTimePremium >= 0 ? '#2e7d32' : '#d32f2f');
+                                        etfPremiumElement.style.fontWeight = 'bold';
+                                    }
+                                    if (etfLightElement) {
+                                        if (afterClose) {
+                                            etfLightElement.innerHTML = '<span class="arb-light" style="background-color:#bdbdbd; opacity:0.6;" title="收盘后由于IB行情限制，已冻结"></span>';
                                         } else {
-                                            etfLightElement.innerHTML = '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                                            if (etfRealTimePremium <= -0.8) {
+                                                etfLightElement.innerHTML = '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>';
+                                            } else {
+                                                etfLightElement.innerHTML = '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                                            }
                                         }
                                     }
+                                } else {
+                                    if (etfPremiumElement) {
+                                        etfPremiumElement.textContent = '-';
+                                        etfPremiumElement.style.color = '#9e9e9e';
+                                        etfPremiumElement.style.fontWeight = 'normal';
+                                    }
+                                    if (etfLightElement) etfLightElement.innerHTML = '';
                                 }
                             }
                         }
@@ -3223,8 +3236,7 @@ def generate(futures_data=None, ib_data=None):
                     var closePriceText = closePriceElement ? closePriceElement.textContent : '';
                     var closePriceMatch = closePriceText.match(/\d+(?:\.\d+)?/);
                     var livePrice = closePriceMatch ? parseFloat(closePriceMatch[0]) : 0;
-                    if (livePrice === 0 || livePrice > 9999) livePrice = staticValuation;
-                    if (livePrice === 0) return;
+                    // 【绝对禁止】使用静态估值伪造实时盘口价！如果读不到实盘价，溢价必须强制作废显示 '-'
                     
                     var premiumBasePrice = livePrice;
                     
@@ -3245,10 +3257,16 @@ def generate(futures_data=None, ib_data=None):
                         var calibLightEl = document.getElementById('rt-calib-light-' + code);
                         if (calibValEl) { calibValEl.textContent = calibVal.toFixed(4); calibValEl.style.color = '#1976d2'; calibValEl.style.fontWeight = 'bold'; }
                         if (calibPremEl) {
-                            var prem = (premiumBasePrice / calibVal - 1) * 100;
-                            calibPremEl.textContent = (prem >= 0 ? '+' : '') + prem.toFixed(2) + '%';
-                            calibPremEl.style.color = prem >= 0 ? '#2e7d32' : '#d32f2f';
-                            if (calibLightEl) calibLightEl.innerHTML = prem <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                            if (premiumBasePrice > 0 && premiumBasePrice < 100000) {
+                                var prem = (premiumBasePrice / calibVal - 1) * 100;
+                                calibPremEl.textContent = (prem >= 0 ? '+' : '') + prem.toFixed(2) + '%';
+                                calibPremEl.style.color = prem >= 0 ? '#2e7d32' : '#d32f2f';
+                                if (calibLightEl) calibLightEl.innerHTML = prem <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                            } else {
+                                calibPremEl.textContent = '-';
+                                calibPremEl.style.color = '#9e9e9e';
+                                if (calibLightEl) calibLightEl.innerHTML = '';
+                            }
                         }
                     } else {
                         // 降级: 矩阵方式
@@ -3271,10 +3289,16 @@ def generate(futures_data=None, ib_data=None):
                             var calibLightEl = document.getElementById('rt-calib-light-' + code);
                             if (calibValEl) { calibValEl.textContent = calibVal.toFixed(4); calibValEl.style.color = '#1976d2'; calibValEl.style.fontWeight = 'bold'; }
                             if (calibPremEl) {
-                                var prem = (premiumBasePrice / calibVal - 1) * 100;
-                                calibPremEl.textContent = (prem >= 0 ? '+' : '') + prem.toFixed(2) + '%';
-                                calibPremEl.style.color = prem >= 0 ? '#2e7d32' : '#d32f2f';
-                                if (calibLightEl) calibLightEl.innerHTML = prem <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                                if (premiumBasePrice > 0 && premiumBasePrice < 100000) {
+                                    var prem = (premiumBasePrice / calibVal - 1) * 100;
+                                    calibPremEl.textContent = (prem >= 0 ? '+' : '') + prem.toFixed(2) + '%';
+                                    calibPremEl.style.color = prem >= 0 ? '#2e7d32' : '#d32f2f';
+                                    if (calibLightEl) calibLightEl.innerHTML = prem <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                                } else {
+                                    calibPremEl.textContent = '-';
+                                    calibPremEl.style.color = '#9e9e9e';
+                                    if (calibLightEl) calibLightEl.innerHTML = '';
+                                }
                             }
                         }
                     }
@@ -3292,10 +3316,16 @@ def generate(futures_data=None, ib_data=None):
                         var exactLightEl = document.getElementById('rt-exact-light-' + code);
                         if (exactValEl) { exactValEl.textContent = exactVal.toFixed(4); exactValEl.style.color = '#1976d2'; exactValEl.style.fontWeight = 'bold'; }
                         if (exactPremEl) {
-                            var prem2 = (premiumBasePrice / exactVal - 1) * 100;
-                            exactPremEl.textContent = (prem2 >= 0 ? '+' : '') + prem2.toFixed(2) + '%';
-                            exactPremEl.style.color = prem2 >= 0 ? '#2e7d32' : '#d32f2f';
-                            if (exactLightEl) exactLightEl.innerHTML = prem2 <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                            if (premiumBasePrice > 0 && premiumBasePrice < 100000) {
+                                var prem2 = (premiumBasePrice / exactVal - 1) * 100;
+                                exactPremEl.textContent = (prem2 >= 0 ? '+' : '') + prem2.toFixed(2) + '%';
+                                exactPremEl.style.color = prem2 >= 0 ? '#2e7d32' : '#d32f2f';
+                                if (exactLightEl) exactLightEl.innerHTML = prem2 <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                            } else {
+                                exactPremEl.textContent = '-';
+                                exactPremEl.style.color = '#9e9e9e';
+                                if (exactLightEl) exactLightEl.innerHTML = '';
+                            }
                         }
                     } else {
                         // 降级: 矩阵方式
@@ -3308,10 +3338,16 @@ def generate(futures_data=None, ib_data=None):
                             var exactLightEl = document.getElementById('rt-exact-light-' + code);
                             if (exactValEl) { exactValEl.textContent = exactVal.toFixed(4); exactValEl.style.color = '#1976d2'; exactValEl.style.fontWeight = 'bold'; }
                             if (exactPremEl) {
-                                var prem2 = (premiumBasePrice / exactVal - 1) * 100;
-                                exactPremEl.textContent = (prem2 >= 0 ? '+' : '') + prem2.toFixed(2) + '%';
-                                exactPremEl.style.color = prem2 >= 0 ? '#2e7d32' : '#d32f2f';
-                                if (exactLightEl) exactLightEl.innerHTML = prem2 <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                                if (premiumBasePrice > 0 && premiumBasePrice < 100000) {
+                                    var prem2 = (premiumBasePrice / exactVal - 1) * 100;
+                                    exactPremEl.textContent = (prem2 >= 0 ? '+' : '') + prem2.toFixed(2) + '%';
+                                    exactPremEl.style.color = prem2 >= 0 ? '#2e7d32' : '#d32f2f';
+                                    if (exactLightEl) exactLightEl.innerHTML = prem2 <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                                } else {
+                                    exactPremEl.textContent = '-';
+                                    exactPremEl.style.color = '#9e9e9e';
+                                    if (exactLightEl) exactLightEl.innerHTML = '';
+                                }
                             }
                         }
                     }
@@ -4077,13 +4113,15 @@ def generate(futures_data=None, ib_data=None):
         final_html += f'                            <td class="num-font" style="width: 85px;">{sf["future_price"]:.2f}</td>\n'
         final_html += f'                            <td class="num-font" style="color:#d35400; font-weight:bold; width: 100px;">{sf["eff_vwap"]:.2f}</td>\n'
         # 官方估值和溢价
-        official_light = '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' if sf["official_premium"] <= -0.8 else '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>'
-        official_premium_cls = "premium-positive" if sf["official_premium"] > 0 else "premium-negative"
-        final_html += f'                            <td class="num-font" style="width: 110px;">{sf["official_valuation"]:.4f}<br><span class="num-font {official_premium_cls}" style="font-size:14px;">{sf["official_premium"]:+.2f}%</span>{official_light}</td>\n'
+        official_light = ('<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' if sf["official_premium"] <= -0.8 else '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>') if sf["official_premium"] is not None else ''
+        official_premium_cls = "premium-positive" if sf["official_premium"] and sf["official_premium"] > 0 else ("premium-negative" if sf["official_premium"] and sf["official_premium"] < 0 else "")
+        official_premium_text = f'{sf["official_premium"]:+.2f}%' if sf["official_premium"] is not None else "-"
+        final_html += f'                            <td class="num-font" style="width: 110px;">{sf["official_valuation"]:.4f}<br><span class="num-font {official_premium_cls}" style="font-size:14px;">{official_premium_text}</span>{official_light}</td>\n'
         # 参考估值和溢价
-        reference_light = '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' if sf["reference_premium"] <= -0.8 else '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>'
-        reference_premium_cls = "premium-positive" if sf["reference_premium"] > 0 else "premium-negative"
-        final_html += f'                            <td class="num-font" style="width: 110px;">{sf["reference_valuation"]:.4f}<br><span class="num-font {reference_premium_cls}" style="font-size:14px;">{sf["reference_premium"]:+.2f}%</span>{reference_light}</td>\n'
+        reference_light = ('<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' if sf["reference_premium"] <= -0.8 else '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>') if sf["reference_premium"] is not None else ''
+        reference_premium_cls = "premium-positive" if sf["reference_premium"] and sf["reference_premium"] > 0 else ("premium-negative" if sf["reference_premium"] and sf["reference_premium"] < 0 else "")
+        reference_premium_text = f'{sf["reference_premium"]:+.2f}%' if sf["reference_premium"] is not None else "-"
+        final_html += f'                            <td class="num-font" style="width: 110px;">{sf["reference_valuation"]:.4f}<br><span class="num-font {reference_premium_cls}" style="font-size:14px;">{reference_premium_text}</span>{reference_light}</td>\n'
         final_html += '                        </tr>\n'
         final_html += '                    </tbody>\n'
         final_html += '                </table>\n'

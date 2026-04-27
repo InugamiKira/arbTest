@@ -19,7 +19,7 @@ class QmtSocketClient:
         # 存储实时价格
         self.prices = {}
         self.order_books = {}  # 存储完整盘口字典，供沙盘推演冲击成本使用
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()  # 0427 核心修复：必须使用可重入锁(RLock)，防止回调函数嵌套请求导致死锁！
         
         # 价格更新回调函数
         self.on_price_update = on_price_update
@@ -146,7 +146,6 @@ class QmtSocketClient:
                         old_price = self.prices.get(code, 0)
                         self.prices[code] = price_to_use
                         if old_price != price_to_use:
-                            print(f"⚡ [银河] {code} 价格更新: {price_to_use} (卖一: {ask_p1}, 最新: {last_price})")
                             if self.on_price_update:
                                 try:
                                     self.on_price_update(code, price_to_use)
@@ -164,7 +163,6 @@ class QmtSocketClient:
                         old_price = self.prices.get(code, 0)
                         self.prices[code] = price_to_use
                         if old_price != price_to_use:
-                            print(f"⚡ [银河] {code} 价格更新: {price_to_use} (卖一: {ask_price}, 最新: {last_price})")
                             if self.on_price_update:
                                 try:
                                     self.on_price_update(code, price_to_use)
