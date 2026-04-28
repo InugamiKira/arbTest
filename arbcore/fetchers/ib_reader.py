@@ -84,6 +84,16 @@ class IBReader(EWrapper, EClient):
         if not self.connected or self.prev_closes:
             return
 
+        # 🛡️ 核心修复：防止刚连上Socket但握手未完成时请求数据导致的 NoneType 比较崩溃
+        if not self.serverVersion():
+            return
+
+        # 🛡️ 核心修复：增加 60 秒的冷却时间，防止因为取不到历史数据而频繁卡顿 API 5 秒
+        current_time = time.time()
+        if current_time - getattr(self, '_last_prev_close_attempt', 0) < 60:
+            return
+        self._last_prev_close_attempt = current_time
+
         print("[IBReader] 昨收数据为空，尝试获取一次...")
         current_prev_closes = {}
         req_ids = []
@@ -107,6 +117,11 @@ class IBReader(EWrapper, EClient):
         if current_prev_closes:
             self.prev_closes = current_prev_closes
             print(f"[IBReader] 📊 已获取昨日收盘价: " + ", ".join([f"{k}=${v:.2f}" for k, v in self.prev_closes.items()]))
+        else:
+            # 🛡️ 核心修复：如果获取失败（通常是免费账户无SMART历史数据权限），直接填入占位符，
+            # 让 self.prev_closes 不再为空，从而彻底掐断无限重试的死循环，还控制台清净！
+            print("[IBReader] ⚠️ 未能获取到昨日收盘价(免费账户无权限)。已终止重试。")
+            self.prev_closes = {sym: 0.0 for sym in self.symbols}
 
     def start_polling(self):
         if not self.running:
@@ -214,7 +229,7 @@ class IBReader(EWrapper, EClient):
                     price = self.req_data.get(req_id_snap)
                     if price:
                         if sym not in self.prices or not isinstance(self.prices[sym], dict):
-                            self.prices[sym] = {'bid': 0.0, 'ask': 0.0}
+                            self.prices[sym] = {'bid': 0.0, 'ask': 0.0, 'bid_size': 0, 'ask_size': 0}
                         self.prices[sym]['bid'] = price
                         self.prices[sym]['ask'] = price # 快照拿不到Ask，用Bid平替
                         self.sources[sym] = "安全快照"
@@ -253,21 +268,30 @@ class IBReader(EWrapper, EClient):
             print(f"[IBReader] 💡 提示 (代码 {errorCode}): 您的账号无美股实时行情订阅权限，系统已自动转入【安全快照】兜底模式，不影响套利运行。")
             return
             
-        print(f"[IBReader] ⚠️ Error {errorCode}: {errorString}")
+        print(f"[IBReader] ⚠️ Error {errorCode} (ReqId: {reqId}): {errorString}")
+        
+        # 🛡️ 核心修复：如果一个同步请求(如历史数据)发生错误，必须设置其Event，否则主线程会卡死
+        if reqId in self.req_events:
+            print(f"[IBReader] 💡 提示: 请求 {reqId} 发生错误，已解除其等待锁。")
+            self.req_events[reqId].set()
+
         if errorCode in [502, 504, 1100, 1101, 1102]:
             self.connected = False
             self.disconnect_from_ib()
             self.mkt_req_ids.clear()
             self.symbol_req_ids.clear()
-            if reqId in self.req_events:
-                self.req_events[reqId].set()
 
     def tickPrice(self, reqId, tickType, price, attrib):
+        # 🛡️ 核心修复：兼容新版 IBAPI，将 Decimal 强转为 float，防止后续 JSON 序列化崩溃
+        try:
+            price = float(price)
+        except Exception:
+            pass
         if price > 0:
             sym = self.mkt_req_ids.get(reqId)
             if sym:
                 if sym not in self.prices or not isinstance(self.prices[sym], dict):
-                    self.prices[sym] = {'bid': 0.0, 'ask': 0.0}
+                    self.prices[sym] = {'bid': 0.0, 'ask': 0.0, 'bid_size': 0, 'ask_size': 0}
                 
                 # 💡 只要长连接有任何跳动，都喂一口看门狗，重置30秒倒计时
                 if tickType in [1, 2, 4, 66, 67, 68]:
@@ -306,8 +330,52 @@ class IBReader(EWrapper, EClient):
                     self.req_data[reqId] = price
                     if reqId in self.req_events: self.req_events[reqId].set()
 
+    def tickSize(self, reqId, tickType, size):
+        """接收 IB 推送的盘口挂单数量"""
+        # 🛡️ 核心修复：兼容新版 IBAPI，将 Decimal 强转为 float/int，防止 JSON 序列化报错
+        try:
+            size = float(size)
+        except Exception:
+            pass
+        sym = self.mkt_req_ids.get(reqId)
+        if sym:
+            if sym not in self.prices or not isinstance(self.prices[sym], dict):
+                self.prices[sym] = {'bid': 0.0, 'ask': 0.0, 'bid_size': 0, 'ask_size': 0}
+                
+            # 💡 只要长连接有任何跳动，都喂一口看门狗，防止被断线判定
+            if tickType in [0, 3, 5, 69, 70, 71]:
+                self.last_tick_time[sym] = time.time()
+                
+            tick_names = {
+                0: "BidSize(买一量)", 3: "AskSize(卖一量)", 5: "LastSize(最新量)",
+                69: "BidSize(延迟买一量)", 70: "AskSize(延迟卖一量)", 71: "LastSize(延迟最新量)"
+            }
+            
+            if tickType in [0, 69]: # 买盘数量
+                self.prices[sym]['bid_size'] = size
+            elif tickType in [3, 70]: # 卖盘数量
+                self.prices[sym]['ask_size'] = size
+                
+            self.last_update_time = datetime.now()
+            
+            # 同样推送给后端的 Socket 回调，保持 Web 端的极速更新
+            if tickType in tick_names and self.on_price_update:
+                now_str = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+                self.on_price_update({
+                    'symbol': sym,
+                    'size': size,
+                    'tickType': tickType,
+                    'tickName': tick_names[tickType],
+                    'timestamp': now_str,
+                    'prices': self.prices
+                })
+
     def historicalData(self, reqId, bar):
-        self.req_data[reqId] = bar.close
+        # 🛡️ 核心修复：兼容新版 IBAPI，将昨收盘价强转为 float，防止 JSON 序列化报 500 错误
+        try:
+            self.req_data[reqId] = float(bar.close)
+        except Exception:
+            self.req_data[reqId] = bar.close
 
     def historicalDataEnd(self, reqId, start, end):
         if reqId in self.req_events: self.req_events[reqId].set()

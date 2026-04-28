@@ -4137,6 +4137,8 @@ def generate(futures_data=None, ib_data=None):
     # 【机密隔离】尝试动态加载本地私密沙盘模块
     try:
         import LOF004_sandbox
+        import importlib
+        importlib.reload(LOF004_sandbox) # 强制热重载，修改004沙盘代码后刷新浏览器秒生效！
         final_html += LOF004_sandbox.generate_private_sniper_panel()
     except ImportError:
         final_html += '                <div class="card" style="margin-bottom: 10px; padding: 40px; background-color: #fafafa; text-align: center; min-height: 300px;">\n'
