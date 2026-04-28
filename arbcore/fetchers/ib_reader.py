@@ -104,10 +104,12 @@ class IBReader(EWrapper, EClient):
             c_prev.symbol, c_prev.secType, c_prev.exchange, c_prev.currency = sym, "STK", "SMART", "USD"
             self.req_events[req_id_prev] = threading.Event()
             self.reqHistoricalData(req_id_prev, c_prev, "", "1 D", "1 day", "TRADES", 1, 1, False, [])
+            # 🛡️ 增加微小延时，防止瞬间并发多个历史请求触发 IB 的 Pacing Violation (防刷限制)
+            time.sleep(0.05)
 
-        # 等待所有请求完成，最多5秒
+        # 等待所有请求完成，最多15秒 (IB历史数据服务器排队响应时可能较慢)
         start_time = time.time()
-        while not all(self.req_events.get(req_id, threading.Event()).is_set() for req_id in req_ids) and (time.time() - start_time < 5):
+        while not all(self.req_events.get(req_id, threading.Event()).is_set() for req_id in req_ids) and (time.time() - start_time < 15):
             time.sleep(0.1)
 
         for req_id, sym in zip(req_ids, self.symbols):
@@ -118,9 +120,9 @@ class IBReader(EWrapper, EClient):
             self.prev_closes = current_prev_closes
             print(f"[IBReader] 📊 已获取昨日收盘价: " + ", ".join([f"{k}=${v:.2f}" for k, v in self.prev_closes.items()]))
         else:
-            # 🛡️ 核心修复：如果获取失败（通常是免费账户无SMART历史数据权限），直接填入占位符，
+            # 🛡️ 核心修复：如果获取失败，直接填入占位符，
             # 让 self.prev_closes 不再为空，从而彻底掐断无限重试的死循环，还控制台清净！
-            print("[IBReader] ⚠️ 未能获取到昨日收盘价(免费账户无权限)。已终止重试。")
+            print("[IBReader] ⚠️ 未能获取到昨日收盘价(可能是并发超限、超时或非交易日无数据)。已终止重试。")
             self.prev_closes = {sym: 0.0 for sym in self.symbols}
 
     def start_polling(self):

@@ -1,6 +1,6 @@
 # AI 隐私文件
+Gemini*
 .gemini
-GEMINI.md
 000_AI_Context.md
 
 # ====================
@@ -15,6 +15,7 @@ woodyAPI/
 woodykey轮动demo/
 
 ETFRotate/
+jsl/
 scripts/
 test_read_data/
 公众号/
@@ -43,6 +44,9 @@ venv/
 *.log
 
 # ====================
-# 放行（允许上传）
+# 数据库文件
 # ====================
-# database/ 目录 & *.db 允许上传
+database/
+*.db
+*.db-shm
+*.db-wal
