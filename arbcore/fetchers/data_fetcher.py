@@ -42,6 +42,65 @@ class DataFetcher:
         # 初始化Woody网页爬虫
         self.woody_crawler = WoodyWebCrawler()
     
+    def sync_akshare_fund_status(self, db_manager):
+        """
+        【JSL专属】全局拉取并缓存全市场基金申赎状态和手续费。
+        融合了 access_sync_status 单次阻断，每天最多只调用一次 AKShare API！
+        """
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        source_key = "akshare_fund_status"
+        
+        if db_manager.is_access_synced_today(today_str, source_key):
+            logger.info("今日已成功同步 AKShare 申赎状态，触发防刷保护，直接使用数据库缓存。")
+            return
+            
+        try:
+            import akshare as ak
+            logger.info("开始从 AKShare 拉取全市场基金申赎状态 (耗时较长，请稍候)...")
+            fund_info = ak.fund_purchase_em()
+            
+            if not fund_info.empty:
+                records = []
+                for _, row in fund_info.iterrows():
+                    purchase_fee = str(row.get('手续费', str(row.get('申购费率', '0%'))))
+                    redemption_fee = str(row.get('赎回费率', '0.50%'))
+                    
+                    if redemption_fee == 'nan' or redemption_fee == '0%':
+                        fund_type = str(row.get('基金类型', ''))
+                        if '货币' in fund_type:
+                            redemption_fee = '0%'
+                        elif '债券' in fund_type:
+                            redemption_fee = '0.10%'
+                        else:
+                            redemption_fee = '0.50%'
+                            
+                    records.append({
+                        'fund_code': str(row.get('基金代码')),
+                        'purchase_status': str(row.get('申购状态', '未知')),
+                        'redemption_status': str(row.get('赎回状态', '未知')),
+                        'purchase_fee': purchase_fee if purchase_fee != 'nan' else '0%',
+                        'redemption_fee': redemption_fee if redemption_fee != 'nan' else '0.50%'
+                    })
+                
+                df_records = pd.DataFrame(records)
+                db_manager.batch_save_fund_purchase_status(df_records)
+                
+                db_manager.mark_access_synced(today_str, source_key)
+                logger.info(f"成功获取并缓存了 {len(df_records)} 只基金的状态数据！")
+                
+        except ImportError:
+            logger.warning("AKShare 未安装，无法同步全市场申赎状态。")
+        except Exception as e:
+            logger.error(f"AKShare 申赎状态同步失败: {e}")
+
+    def fetch_lof_share_mock(self, fund_code):
+        """由于 AKShare 暂无场内份额接口，提供模拟降级数据"""
+        return {
+            'shares': '0',
+            'shares_change': '0',
+            'shares_change_rate': '0%'
+        }
+
     def fetch_official_exchange_rate(self, date=None):
         """从国家外汇管理局获取指定日期的人民币中间价，失败时回退到Woody网页"""
         logger.info("从国家外汇管理局获取人民币中间价")

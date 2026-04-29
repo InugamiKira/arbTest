@@ -19,7 +19,7 @@ CONFIG_FILE = os.path.join(SCRIPT_DIR, "lof_config.yaml")
 OUTPUT_FILE = os.path.join(SCRIPT_DIR, "lof_monitor.html")
 
 # 共享数据库路径
-SHARED_DB_PATH = r"D:\Study\arbTest\database\arb_master.db"
+SHARED_DB_PATH = os.path.join(os.path.dirname(SCRIPT_DIR), "database", "arb_master.db")
 
 # 导入模块
 sys.path.insert(0, SCRIPT_DIR)

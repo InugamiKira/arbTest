@@ -180,6 +180,28 @@ class DatabaseManager:
                 )
             ''')
             
+            # 新增：JSL 模块专属 - 基金监控配置池 (隔离原 LOF/ETF 业务)
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS jsl_fund_list (
+                    category TEXT,
+                    fund_code TEXT PRIMARY KEY,
+                    fund_name TEXT,
+                    related_index TEXT
+                )
+            ''')
+
+            # 新增：JSL 模块专属 - AKShare 全市场基金申赎状态缓存表
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS fund_purchase_status (
+                    fund_code TEXT PRIMARY KEY,
+                    purchase_status TEXT,
+                    redemption_status TEXT,
+                    purchase_fee TEXT,
+                    redemption_fee TEXT,
+                    updated_at TIMESTAMP DEFAULT (datetime('now', 'localtime'))
+                )
+            ''')
+            
             conn.commit()
             conn.close()
         
@@ -405,6 +427,70 @@ class DatabaseManager:
                 logger.error(f"同步轮动配置池失败: {e}")
             finally:
                 conn.close()
+
+    # ================= JSL 监控模块 (集思录) 专用方法 =================
+    def sync_jsl_fund_list(self, fund_list: List[Dict[str, str]]):
+        """将 JSL 的基金配置清单同步到数据库中，彻底替代 fund_list.csv"""
+        with self.lock:
+            try:
+                conn = self._get_conn()
+                for item in fund_list:
+                    conn.execute('''
+                        INSERT OR REPLACE INTO jsl_fund_list 
+                        (category, fund_code, fund_name, related_index)
+                        VALUES (?, ?, ?, ?)
+                    ''', (item['category'], item['code'], item['name'], item.get('related_index', '-')))
+                conn.commit()
+                logger.info(f"已成功将 {len(fund_list)} 条 JSL 配置同步至数据库。")
+            except Exception as e:
+                logger.error(f"同步 JSL 基金清单失败: {e}")
+            finally:
+                conn.close()
+
+    def get_jsl_fund_list(self) -> List[Dict[str, str]]:
+        """获取 JSL 监控配置池"""
+        conn = self._get_conn()
+        cursor = conn.execute("SELECT category, fund_code, fund_name, related_index FROM jsl_fund_list")
+        results = [{"category": r[0], "code": r[1], "name": r[2], "related_index": r[3]} for r in cursor.fetchall()]
+        conn.close()
+        return results
+
+    def batch_save_fund_purchase_status(self, df):
+        """批量保存 AKShare 获取的申赎状态数据到本地库"""
+        with self.lock:
+            try:
+                conn = self._get_conn()
+                records = df.to_records(index=False)
+                conn.executemany('''
+                    INSERT OR REPLACE INTO fund_purchase_status 
+                    (fund_code, purchase_status, redemption_status, purchase_fee, redemption_fee, updated_at)
+                    VALUES (?, ?, ?, ?, ?, (datetime('now', 'localtime')))
+                ''', records)
+                conn.commit()
+                logger.info(f"成功将 {len(df)} 条全市场申赎状态缓存入库！")
+            except Exception as e:
+                logger.error(f"批量保存 AKShare 申赎状态失败: {e}")
+            finally:
+                conn.close()
+
+    def get_fund_purchase_status(self, fund_code: str) -> Dict[str, str]:
+        """极速获取单只基金的申赎费率，如果没找到则返回兜底数据"""
+        conn = self._get_conn()
+        cursor = conn.execute('''
+            SELECT purchase_status, redemption_status, purchase_fee, redemption_fee 
+            FROM fund_purchase_status WHERE fund_code = ?
+        ''', (fund_code,))
+        r = cursor.fetchone()
+        conn.close()
+        if r:
+            return {
+                'purchase_status': r[0], 'redemption_status': r[1],
+                'purchase_fee': r[2], 'redemption_fee': r[3]
+            }
+        return {
+            'purchase_status': '未知', 'redemption_status': '未知',
+            'purchase_fee': '0%', 'redemption_fee': '0.50%'
+        }
 
     # ================= 系统运行维护方法 =================
     def get_latest_futures_price(self, symbol: str) -> Optional[float]:
