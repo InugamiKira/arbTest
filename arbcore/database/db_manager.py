@@ -122,10 +122,17 @@ class DatabaseManager:
                     calibration REAL,
                     hedge REAL,
                     position REAL,
+                    nav REAL,
                     updated_at TIMESTAMP DEFAULT (datetime('now', 'localtime')),
                     PRIMARY KEY (date, fund_code)
                 )
             ''')
+            
+            # 热更新：为已存在的 fund_daily_factors 表无损添加 nav 字段
+            try:
+                conn.execute('ALTER TABLE fund_daily_factors ADD COLUMN nav REAL')
+            except sqlite3.OperationalError:
+                pass
             
             # 新增：原始 API 数据表 (直接存原汁原味的 JSON，废弃 basic.csv)
             conn.execute('''

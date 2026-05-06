@@ -10,8 +10,8 @@ funds:
   name: 南方原油
   category: 原油
   holdings:
-    equity_ratio: 75.28
-    cash_ratio: 24.72
+    equity_ratio: 78.41
+    cash_ratio: 21.59
   holdings_portfolio: []
   future_hedging:
   - symbol: MCL
@@ -23,17 +23,17 @@ funds:
     name: 微原油期货
   valuation_portfolio:
   - symbol: USO-EU
-    weight: 37.01
+    weight: 37.85
     anchor: EU
   - symbol: USO
-    weight: 54.97
+    weight: 55.67
     anchor: US
   - symbol: USO-JP
-    weight: 8.02
+    weight: 6.48
     anchor: US
   trade_etf: USO
   trade_future: MCL
-  position: 75.28
+  position: 78.41
 - code: '160723'
   name: 嘉实原油
   category: 原油

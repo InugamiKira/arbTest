@@ -15,7 +15,12 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 导入Woody网页爬虫
-from .woody_web_crawler import WoodyWebCrawler
+try:
+    # 当作为模块被外部调用时使用相对导入
+    from .woody_web_crawler import WoodyWebCrawler
+except ImportError:
+    # 当直接运行当前文件进行测试时，退回绝对导入
+    from woody_web_crawler import WoodyWebCrawler
 
 # 禁用urllib3的警告
 requests.packages.urllib3.disable_warnings()
@@ -41,6 +46,7 @@ class DataFetcher:
         }
         # 初始化Woody网页爬虫
         self.woody_crawler = WoodyWebCrawler()
+        self._szse_blocked = False  # 新增：深交所全局熔断标志
     
     def sync_akshare_fund_status(self, db_manager):
         """
@@ -93,13 +99,60 @@ class DataFetcher:
         except Exception as e:
             logger.error(f"AKShare 申赎状态同步失败: {e}")
 
-    def fetch_lof_share_mock(self, fund_code):
-        """由于 AKShare 暂无场内份额接口，提供模拟降级数据"""
-        return {
-            'shares': '0',
-            'shares_change': '0',
-            'shares_change_rate': '0%'
+    def fetch_szse_fund_shares_only(self, fund_code):
+        """
+        【独家封装】从深交所官方API仅获取基金的场内份额（不获取净值）。
+        仅支持深交所基金（通常以15或16开头）。
+        """
+        import random
+        # 增加随机休眠，深交所反爬极其严格，低于2秒的高频并发会直接被防火墙切断连接
+        time.sleep(random.uniform(2.0, 5.0))
+        
+        logger.info(f"从深交所官方API仅获取基金 {fund_code} 的场内份额")
+        # 增加 random 参数，完美模拟真实浏览器请求，防止被缓存或拦截
+        url = f"https://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1105&TABKEY=tab1&txtZqdm={fund_code}&random={random.random()}"
+        
+        # 终极伪装：完全模拟真实浏览器，增加应对 WAF 防火墙的特定 Header
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Referer": "https://www.szse.cn/market/fund/list/index.html",
+            "X-Request-Type": "ajax",
+            "X-Requested-With": "XMLHttpRequest",
+            "Connection": "keep-alive",
+            "Host": "www.szse.cn"
         }
+        
+        try:
+            # 使用 Session 模式，应对部分 WAF 会校验 TCP 连接状态的要求
+            session = requests.Session()
+            response = session.get(url, headers=headers, timeout=10, verify=False, proxies={"http": None, "https": None})
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list) and len(data) > 0 and 'data' in data[0]:
+                    fund_list = data[0]['data']
+                    if fund_list and len(fund_list) > 0:
+                        fund_info = fund_list[0]
+                        nav_date = fund_info.get('jzrq', '')
+                        shares = fund_info.get('ltfe', '') # 流通份额（场内份额）
+                        
+                        # 清洗深交所返回的千分位逗号
+                        if isinstance(shares, str):
+                            shares = shares.replace(',', '')
+                        
+                        logger.info(f"✅ [SZSE] {fund_code} 场内份额: {shares} ({nav_date})")
+                        return {
+                            'nav_date': nav_date,
+                            'shares': float(shares) if shares else None
+                        }
+            logger.warning(f"⚠️ [SZSE] 未能查到 {fund_code} 的信息，可能不是深交所基金。")
+        except Exception as e:
+            # 拦截 RemoteDisconnected 异常，不抛出崩溃，打印温和提示
+            logger.warning(f"⚠️ [SZSE] 深交所防火墙拦截了请求 (连接重置)。详细原因: {e}")
+            self._szse_blocked = True  # 触发全局熔断
+            logger.warning("🚨 [SZSE] 触发全局熔断机制！本次运行后续所有深市基金将不再尝试深交所API。")
+        return None
 
     def fetch_official_exchange_rate(self, date=None):
         """从国家外汇管理局获取指定日期的人民币中间价，失败时回退到Woody网页"""
@@ -425,6 +478,7 @@ class DataFetcher:
             for item in sina_data:
                 date = item.get('day')  # 日期
                 close = item.get('close')  # 收盘价
+                volume = item.get('volume', 0)  # 成交量
                 
                 if not date or not close:
                     continue
@@ -447,12 +501,14 @@ class DataFetcher:
                 
                 try:
                     close = float(close)  # 收盘价（历史数据）
+                    volume = float(volume) # 成交量
                 except ValueError:
                     continue
                 
                 lof_data.append({
                     '日期': date,
-                    'LOF交易价格': close  # 历史收盘价
+                    'LOF交易价格': close,  # 历史收盘价
+                    '成交量': volume       # 历史成交量
                 })
             
             if lof_data:

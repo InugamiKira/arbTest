@@ -105,8 +105,17 @@ class StaticValuationCalculator:
         idx_sym = None
         if idx_url:
             import re
-            m = re.search(r'\.(INX|NDX|DJI)', idx_url, re.IGNORECASE)
-            idx_sym = f".{m.group(1).upper()}" if m else None
+            # 兼容新浪各种指数链接格式 (如 quotes/.INX.html)
+            m = re.search(r'(?:symbol=|list=gb_|quotes/)([.a-zA-Z0-9]+)', idx_url, re.IGNORECASE)
+            if m:
+                raw_sym = m.group(1).upper().replace('.HTML', '')
+                idx_sym = f".{raw_sym}" if not raw_sym.startswith('.') else raw_sym
+                
+        if not idx_sym and category == '指数':
+            trade_etf = str(fund.get('trade_etf', '')).upper()
+            if 'QQQ' in trade_etf: idx_sym = '.NDX'
+            elif 'SPY' in trade_etf: idx_sym = '.INX'
+            
         if idx_sym:
             idx_df = pd.read_sql(f'SELECT date, price as "{idx_sym}" FROM index_daily WHERE symbol = ?', conn, params=(idx_sym,))
             df = pd.merge(df, idx_df, on='date', how='left')
@@ -116,6 +125,8 @@ class StaticValuationCalculator:
         # ================= 极速矩阵运算核心 =================
         df['date'] = pd.to_datetime(df['date'])
         df.sort_values('date', ascending=False, inplace=True)
+        # 核心拦截：强制剔除合并产生的重复日期，只保留最新的记录，切断 DataFrame -> Series 真值异常的源头
+        df.drop_duplicates(subset=['date'], keep='first', inplace=True)
         df.reset_index(drop=True, inplace=True)
         
         # === 核心修复：向下兼容 (bfill)，继承最近一个交易日的真实API因子 ===
