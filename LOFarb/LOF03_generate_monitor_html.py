@@ -2092,8 +2092,8 @@ def generate(futures_data=None, ib_data=None):
                     }
                 }
 
-                // 🌟 仅限单一资产(如XOP/QQQ)使用校准魔法。多资产变种组合(如黄金、原油)强制退回矩阵。
-                if (calibration && calibration > 0 && baseData.hedgingPortfolio.length === 1 && position > 0) {
+                // 🌟 仅限单一资产(如XOP等纯ETF)使用校准魔法。指数类(SPY/QQQ)由于WoodyAPI返回的校准因子其实是期货的，强制退回降级的传统兜底算法(矩阵)
+                if (category !== '指数' && calibration && calibration > 0 && baseData.hedgingPortfolio.length === 1 && position > 0) {
                     var primarySym = baseData.hedgingPortfolio[0].symbol;
                     var currentAssetPrice = 0;
                     if (primarySym.includes('GLD')) currentAssetPrice = gldPrice;
@@ -2574,7 +2574,8 @@ def generate(futures_data=None, ib_data=None):
                 var hedgeValue = baseData.hedgeValue;
                 if (!hedgeValue || hedgeValue <= 0) hedgeValue = baseData.etfHedgeValue;
                 
-                if (hedgeValue && hedgeValue > 0 && baseData.hedgingPortfolio && baseData.hedgingPortfolio.length === 1) {
+                // 🌟 同步主面板逻辑：仅限单一资产使用对冲魔法。指数类(SPY/QQQ)强制退回降级的传统兜底算法(矩阵)
+                if (baseData.category !== '指数' && hedgeValue && hedgeValue > 0 && baseData.hedgingPortfolio && baseData.hedgingPortfolio.length === 1) {
                     var primarySym = baseData.hedgingPortfolio[0].symbol;
                     var baseSym = 'unknown';
                     if (primarySym.includes('GLD')) baseSym = 'gld';
