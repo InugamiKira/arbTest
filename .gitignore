@@ -9,6 +9,7 @@ Gemini*
 LOFarb/ibapi/
 LOFarb/my-ai/
 LOFarb/AGENTS/
+LOFarb/test/
 
 **/_mytoken.py
 woodyAPI/
@@ -42,6 +43,7 @@ venv/
 # 日志文件
 # ====================
 *.log
+LOFarb/logs/
 
 # ====================
 # 数据库文件
@@ -55,3 +57,7 @@ database/**/*.sqlite
 # ====================
 # 私用基金配置（不上传，用于个人自定义基金）
 LOFarb/lof_config_private.yaml
+
+# 敏感配置（账号密码等，不上传）
+LOFarb/config_local.py
+LOFarb/*.local.py
