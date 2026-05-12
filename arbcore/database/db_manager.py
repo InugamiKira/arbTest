@@ -74,10 +74,17 @@ class DatabaseManager:
                     date TEXT NOT NULL,
                     symbol TEXT NOT NULL,
                     price REAL,
+                    netvalue REAL,
                     updated_at TIMESTAMP DEFAULT (datetime('now', 'localtime')),
                     PRIMARY KEY (date, symbol)
                 )
             ''')
+            
+            # 热更新：为已存在的 usa_etf_daily_prices 表添加 netvalue 字段
+            try:
+                conn.execute('ALTER TABLE usa_etf_daily_prices ADD COLUMN netvalue REAL')
+            except sqlite3.OperationalError:
+                pass  # 如果字段已存在会抛出此异常，直接忽略即可
             
             # 新增：纯净指数每日价格表
             conn.execute('''
@@ -254,12 +261,19 @@ class DatabaseManager:
             conn.commit()
             conn.close()
             
-    def upsert_usa_etf_price(self, date: str, symbol: str, price: float):
-        """插入或覆盖特定底层 ETF 在某日的基准价格（如 GLD, ^GLD-EU, XOP）"""
+    def upsert_usa_etf_price(self, date: str, symbol: str, price: float, netvalue: float = None):
+        """插入或覆盖特定底层 ETF 在某日的基准价格（如 GLD, ^GLD-EU, XOP）
+        注意：只更新 price 字段，保留已有的 netvalue 不被覆盖
+        """
         with self.lock:
             conn = self._get_conn()
-            query = "INSERT OR REPLACE INTO usa_etf_daily_prices (date, symbol, price, updated_at) VALUES (?, ?, ?, (datetime('now', 'localtime')))"
-            conn.execute(query, (date, symbol, price))
+            cursor = conn.cursor()
+            # 优先 UPDATE，只覆盖 price，保留 netvalue（如果新值不为空则更新）
+            cursor.execute("UPDATE usa_etf_daily_prices SET price = ?, netvalue = COALESCE(?, netvalue), updated_at = (datetime('now', 'localtime')) WHERE date = ? AND symbol = ?", (price, netvalue, date, symbol))
+            if cursor.rowcount == 0:
+                # 没有更新到任何行，则 INSERT（此时 netvalue 来自外部导入，不覆盖）
+                query = "INSERT INTO usa_etf_daily_prices (date, symbol, price, netvalue) VALUES (?, ?, ?, ?)"
+                cursor.execute(query, (date, symbol, price, netvalue))
             conn.commit()
             conn.close()
             

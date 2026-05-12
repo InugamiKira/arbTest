@@ -63,18 +63,28 @@ class StaticValuationCalculator:
                 sym = f"^{sym}"
             etf_symbols.append(sym)
             
-            # 匹配价格
-            etf_df = pd.read_sql(f'SELECT date, price as "{sym}" FROM usa_etf_daily_prices WHERE symbol = ?', conn, params=(sym,))
-            df = pd.merge(df, etf_df, on='date', how='left')
+            # 匹配价格 (优先使用netvalue，否则降级到price)
+            price_col = 'netvalue'  # 默认尝试净值字段
+            etf_df = pd.read_sql(f'SELECT date, price, netvalue FROM usa_etf_daily_prices WHERE symbol = ?', conn, params=(sym,))
+            if not etf_df.empty and etf_df['netvalue'].notna().any() and (etf_df['netvalue'] > 0).any():
+                etf_df.rename(columns={'netvalue': sym}, inplace=True)
+                price_col = 'netvalue'
+            else:
+                etf_df.rename(columns={'price': sym}, inplace=True)
+            df = pd.merge(df, etf_df[['date', sym]], on='date', how='left')
             
             # 匹配每日动态变化的真实仓位权重
             weight_df = pd.read_sql(f'SELECT date, weight as "{sym}权重" FROM fund_basket_weights WHERE fund_code = ? AND underlying_symbol = ?', conn, params=(fund_code, sym))
             df = pd.merge(df, weight_df, on='date', how='left')
             
-        # 确保魔法锚点 ETF 也被拉入计算基座
+        # 确保魔法锚点 ETF 也被拉入计算基座 (同样优先netvalue)
         if primary_sym and primary_sym not in df.columns:
-            primary_df = pd.read_sql(f'SELECT date, price as "{primary_sym}" FROM usa_etf_daily_prices WHERE symbol = ?', conn, params=(primary_sym,))
-            df = pd.merge(df, primary_df, on='date', how='left')
+            primary_df = pd.read_sql(f'SELECT date, price, netvalue FROM usa_etf_daily_prices WHERE symbol = ?', conn, params=(primary_sym,))
+            if not primary_df.empty and primary_df['netvalue'].notna().any() and (primary_df['netvalue'] > 0).any():
+                primary_df.rename(columns={'netvalue': primary_sym}, inplace=True)
+            else:
+                primary_df.rename(columns={'price': primary_sym}, inplace=True)
+            df = pd.merge(df, primary_df[['date', primary_sym]], on='date', how='left')
 
         # 5. 匹配大宗期货结算价行情
         future_sym = None

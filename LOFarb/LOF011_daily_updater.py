@@ -46,8 +46,19 @@ class DailyUpdater:
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         from arbcore.config.config_loader import load_config
         
-        config_file = os.path.join(os.path.dirname(__file__), "lof_config.yaml")
+        # 优先使用私有的配置文件（不上传Gitee，包含更多基金）
+        private_config_file = os.path.join(os.path.dirname(__file__), "lof_config_private.yaml")
+        fallback_config_file = os.path.join(os.path.dirname(__file__), "lof_config.yaml")
+        
+        if os.path.exists(private_config_file):
+            config_file = private_config_file
+        else:
+            config_file = fallback_config_file
+            
         logger.info(f"📋 加载配置文件: {config_file}")
+        
+        # 保存配置文件的路径，供 step2_5 更新时使用
+        self._config_file_path = config_file
         return load_config(config_file)
 
     def step1_and_2_fetch_woody_api(self):
@@ -103,10 +114,12 @@ class DailyUpdater:
             conn.close()
             
             if yaml_updated:
-                config_file = os.path.join(os.path.dirname(__file__), "lof_config.yaml")
+                # 保存到加载时使用的配置文件（优先lof_config_private.yaml）
+                config_file = getattr(self, '_config_file_path', os.path.join(os.path.dirname(__file__), "lof_config.yaml"))
+                config_name = os.path.basename(config_file)
                 with open(config_file, 'w', encoding='utf-8') as f:
                     yaml.safe_dump(self.config, f, allow_unicode=True, sort_keys=False)
-                logger.info("✅ lof_config.yaml 文件已成功覆写更新！")
+                logger.info(f"✅ {config_name} 文件已成功覆写更新！")
             else:
                 logger.info("✅ 经对比，YAML中已是最新仓位权重，无需覆写。")
                 
