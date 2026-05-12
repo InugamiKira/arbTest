@@ -2,7 +2,7 @@
 chcp 65001 > nul
 setlocal
 set "ROOT=%~dp0"
-:: 优化：使用系统环境变量中的 python，方便分享给别人直接克隆运行
+REM 优化：使用系统环境变量中的 python，方便分享给别人直接克隆运行
 set "PY=python"
 set "LOGDIR=%ROOT%logs"
 if not exist "%LOGDIR%" mkdir "%LOGDIR%"
@@ -19,9 +19,9 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-:: 注释掉此前的数据库存在性检查。
-:: 新的Python代码会自动处理数据库的创建。
-echo [系统] 检查数据库... 如果数据库不存在，程序将自动创建。
+REM 注释掉此前的数据库存在性检查。
+REM 新的Python代码会自动处理数据库的创建。
+echo [System] Checking database... auto-create if not exists.
 
 echo [清理] 正在结束可能残留的后台进程，彻底释放 5000 端口...
 echo (提示：此操作会结束所有名为 python.exe 的进程)

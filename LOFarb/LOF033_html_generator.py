@@ -577,25 +577,7 @@ class HtmlGenerator:
                 row.style.display = (row.style.display === 'table-row') ? 'none' : 'table-row';
             }
             function updateNightPrices() {
-                var input = document.getElementById('night-price-input').value;
-                var prices = parseNightPrices(input);
-                
-                // 更新ETF价格
-                if (prices.GLD) {
-                    document.getElementById('gld-price').value = prices.GLD;
-                }
-                if (prices.USO) {
-                    document.getElementById('uso-price').value = prices.USO;
-                }
-                if (prices.XOP) {
-                    document.getElementById('xop-price').value = prices.XOP;
-                }
-                if (prices.SLV) {
-                    document.getElementById('slv-price').value = prices.SLV;
-                }
-                
-                // 更新基金的实时价格和估值
-                window.calculateRealTimeValues();
+                // 已废弃，现已由 Python 渲染的主面板逻辑全盘接管
             }
             function parseNightPrices(input) {
                 var prices = {};

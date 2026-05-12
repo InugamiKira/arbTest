@@ -452,7 +452,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
         for col in etf_columns:
             etf_val = df_idx.loc[d_T].get(col, 0) if col in df_idx.columns else 0
             if isinstance(etf_val, (int, float)) and etf_val > 0:
-                etf_td_html += f"<td class='col-etf-bg'>{etf_val:.2f}</td>"
+                etf_td_html += f"<td class='col-etf-bg'>{etf_val:.3f}</td>"
             else:
                 etf_td_html += f"<td class='col-etf-bg'>-</td>"
         
@@ -462,7 +462,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
             for col in etf_columns:
                 etf_val_t1 = df_idx.loc[d_T1].get(col, 0) if col in df_idx.columns else 0
                 if isinstance(etf_val_t1, (int, float)) and etf_val_t1 > 0:
-                    etf_td_html_t1 += f"<td>{etf_val_t1:.2f}</td>"
+                    etf_td_html_t1 += f"<td>{etf_val_t1:.3f}</td>"
                 else:
                     etf_td_html_t1 += f"<td>-</td>"
         else:
@@ -578,26 +578,32 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
         # 处理收盘价为非数字的情况
         close_str = f"{close_price:.3f}" if isinstance(close_price, (int, float)) and close_price > 0 else "无"
         
-        # 确定显示的价格类型和日期
+        # 确定显示的价格类型和日期 - 使用 df_idx 确保与 est_home 日期一致
         price_date = est_home_date
         
-        # 获取最近一个交易日的收盘价
+        # 获取最近一个交易日的收盘价 - 优先从 df_idx（fund_history表）获取，与 est_home 同日期
         latest_valid_close = 0  # 核心修复：防止底层报错崩溃
-        valid_closes = lof_df_sorted[lof_df_sorted['close'] > 0]
-        if not valid_closes.empty:
-            latest_valid_close = valid_closes.iloc[0]['close']
-            latest_close_date = valid_closes.iloc[0]['date'].strftime('%m-%d')
+        valid_closes_from_history = df_idx[df_idx['close'] > 0] if 'close' in df_idx.columns else pd.DataFrame()
+        if not valid_closes_from_history.empty:
+            latest_valid_close = valid_closes_from_history.iloc[0]['close']
+            latest_close_date = valid_closes_from_history.index[0].strftime('%m-%d') if hasattr(valid_closes_from_history.index[0], 'strftime') else str(valid_closes_from_history.index[0])[-5:]
             close_str = f"{latest_valid_close:.3f}"
             price_date = latest_close_date
         else:
-            close_str = "无"
-        
-        # 计算T-1溢价，使用实时价除以静态官方估值
-        h_p_cls, h_p_txt = "", "-"
-        if isinstance(est_home, (int, float)) and est_home > 0:
+            # 兜底：使用 fund_data 表
+            valid_closes = lof_df_sorted[lof_df_sorted['close'] > 0]
             if not valid_closes.empty:
                 latest_valid_close = valid_closes.iloc[0]['close']
-                h_p_cls, h_p_txt = html_generator.format_color((latest_valid_close / est_home - 1) * 100)
+                latest_close_date = valid_closes.iloc[0]['date'].strftime('%m-%d')
+                close_str = f"{latest_valid_close:.3f}"
+                price_date = latest_close_date
+            else:
+                close_str = "无"
+        
+        # 计算T-1溢价，使用实时价除以静态官方估值 - 使用与 est_home 同日期的 close
+        h_p_cls, h_p_txt = "", "-"
+        if isinstance(est_home, (int, float)) and est_home > 0 and latest_valid_close > 0:
+            h_p_cls, h_p_txt = html_generator.format_color((latest_valid_close / est_home - 1) * 100)
         
         # 计算估值误差比例（只有同一天的数据才进行计算）
         h_err_cls, h_err_txt = "", "-"
@@ -1164,8 +1170,8 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                                 <div style="display: flex; align-items: center; gap: 4px; background: #fff5f5; padding: 3px 8px; border-radius: 4px; border: 1px solid #ffcdd2; white-space: nowrap;">
                                     <select id="trade-broker-{code}-etf" style="font-size:11px; padding:1px; border:1px solid #ffcdd2; border-radius:3px; background:#fff; color:#d32f2f; font-weight:bold; cursor:pointer;" title="选择实盘交易通道">
                                         <option value="yinhe_qmt">银河QMT (8888)</option>
-                                        <option value="guojin_qmt">国金QMT (原生)</option>
                                         <option value="tdx">通达信</option>
+                                        <!-- <option value="guojin_qmt">国金QMT (原生)</option> -->
                                     </select>
                                     <span style="font-weight:bold; color:#d32f2f; font-size:11px;">{name}:</span>
                                     <span style="color:#666; font-size: 11px;">数量:</span>
@@ -1496,7 +1502,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
                 <!-- 【区域名称：下单按键】两行按键：买入按键（上一行）、卖出按键（下一行） -->
                 {get_three_hedge_calculations_with_trade()}
 
-                <div style="margin-top: 15px; font-size: 13px; color: #888;">* 提示：面板打开时会自动填入主面板实盘价作为默认测试价。您可以随意修改输入框内的值，点击计算后推演该价位溢价率，不影响主面板自动刷新。</div>
+                <div style="margin-top: 15px; font-size: 13px; color: #888;">* 提示：面板打开时会自动填入主面板实盘价作为默认测试价。您可以随意修改输入框内的值，点击计算后推演该价位溢价率，不影响主面板自动刷新。也支持国金QMT。</div>
             </div>
         </div>"""
     
@@ -1944,10 +1950,26 @@ def generate(futures_data=None, ib_data=None):
             if fund_global_date and not global_date_str:
                 global_date_str = fund_global_date
 
+    # === 终极重构：全自动动态扫描并提取活跃美股 ETF ===
+    active_etfs_set = set()
+    for fund in cfg.get('funds', []):
+        for item in fund.get('valuation_portfolio', []) + fund.get('hedging_portfolio', []):
+            sym = item.get('symbol', '').replace('^', '').split('-')[0].upper()
+            if sym and sym not in ['GC', 'CL', 'NQ', 'ES', 'AG', 'AG0', 'MGC', 'MCL', 'MES', 'MNQ']: active_etfs_set.add(sym)
+        if fund.get('trade_etf'):
+            for s in str(fund.get('trade_etf')).replace('，', ',').split(','):
+                s = s.strip().upper()
+                if s and s not in ['GC', 'CL', 'NQ', 'ES', 'AG', 'AG0', 'MGC', 'MCL', 'MES', 'MNQ']: active_etfs_set.add(s)
+    
+    # 自定义排序：XOP优先，其余按字母顺序
+    etf_order = ['XOP', 'GLD', 'INDA', 'KWEB', 'QQQ', 'RSPH', 'SLV', 'SPY', 'XBI', 'XLY', 'USO', 'XLE']
+    active_etfs = sorted(list(active_etfs_set), key=lambda x: (etf_order.index(x) if x in etf_order else 999, x))
+
     # 生成JavaScript代码，注意转义大括号
     js_code = r'''
         <script>
             // 注入Python预先计算的基金基准数据，彻底抛弃前端读CSV
+            window.activeEtfs = ''' + json.dumps(active_etfs) + r''';
             window.fundBaseData = ''' + json.dumps(js_fund_base_data, ensure_ascii=False) + r''';
             window.calibData = { "gold": ''' + str(gold_calibration) + r''', "oil": ''' + str(oil_calibration) + r''' };
 
@@ -2063,7 +2085,7 @@ def generate(futures_data=None, ib_data=None):
             }
             
             // 高效的O(1)计算实时估值函数，抛弃AJAX读取CSV的卡顿机制
-            function calculateETFRealTimeValuation(fundCode, category, gldPrice, usoPrice, xopPrice, xbiPrice, xlyPrice, slvPrice, spyPrice, qqqPrice, staticValuation) {
+            function calculateETFRealTimeValuation(fundCode, category, staticValuation) {
                 var baseData = window.fundBaseData[fundCode];
                 if (!baseData || !baseData.position || baseData.hedgingPortfolio.length === 0) {
                     return 0;
@@ -2091,19 +2113,16 @@ def generate(futures_data=None, ib_data=None):
                         calibration = hedgeValue * position;
                     }
                 }
+                
+                function getCurrentPrice(sym) {
+                    var cleanSym = sym.replace('^', '').split('-')[0].toUpperCase();
+                    return window.currentEtfPrices[cleanSym] || 0;
+                }
 
                 // 🌟 仅限单一资产(如XOP等纯ETF)使用校准魔法。指数类(SPY/QQQ)由于WoodyAPI返回的校准因子其实是期货的，强制退回降级的传统兜底算法(矩阵)
                 if (category !== '指数' && calibration && calibration > 0 && baseData.hedgingPortfolio.length === 1 && position > 0) {
                     var primarySym = baseData.hedgingPortfolio[0].symbol;
-                    var currentAssetPrice = 0;
-                    if (primarySym.includes('GLD')) currentAssetPrice = gldPrice;
-                    else if (primarySym.includes('USO')) currentAssetPrice = usoPrice;
-                    else if (primarySym.includes('XOP')) currentAssetPrice = xopPrice;
-                    else if (primarySym.includes('XBI')) currentAssetPrice = xbiPrice;
-                    else if (primarySym.includes('XLY')) currentAssetPrice = xlyPrice;
-                    else if (primarySym.includes('SLV')) currentAssetPrice = slvPrice;
-                    else if (primarySym.includes('SPY')) currentAssetPrice = spyPrice;
-                    else if (primarySym.includes('QQQ')) currentAssetPrice = qqqPrice;
+                    var currentAssetPrice = getCurrentPrice(primarySym);
                     
                     if (currentAssetPrice > 0) {
                         // 原汁原味的 Woody 公式：实时估值 = 现金底仓 + (仓位 / Calibration) * (ETF实时价 * 实时汇率)
@@ -2118,15 +2137,7 @@ def generate(futures_data=None, ib_data=None):
                 
                 for (var i = 0; i < baseData.hedgingPortfolio.length; i++) {
                     var item = baseData.hedgingPortfolio[i];
-                    var currentPrice = 0;
-                    if (item.symbol.includes('GLD')) currentPrice = gldPrice;
-                    else if (item.symbol.includes('USO')) currentPrice = usoPrice;
-                    else if (item.symbol.includes('XOP')) currentPrice = xopPrice;
-                    else if (item.symbol.includes('XBI')) currentPrice = xbiPrice;
-                    else if (item.symbol.includes('XLY')) currentPrice = xlyPrice;
-                    else if (item.symbol.includes('SLV')) currentPrice = slvPrice;
-                    else if (item.symbol.includes('SPY')) currentPrice = spyPrice;
-                    else if (item.symbol.includes('QQQ')) currentPrice = qqqPrice;
+                    var currentPrice = getCurrentPrice(item.symbol);
                     
                     var basePrice = baseData.baseEtfPrices[item.symbol];
                     if (basePrice > 0 && currentPrice > 0 && item.weight > 0) {
@@ -2598,14 +2609,7 @@ def generate(futures_data=None, ib_data=None):
                     
                     baseData.hedgingPortfolio.forEach(function(h) {
                         var sym = h.symbol;
-                        var baseSym = 'unknown';
-                        if (sym.includes('GLD')) baseSym = 'gld';
-                        else if (sym.includes('USO')) baseSym = 'uso';
-                        else if (sym.includes('XOP')) baseSym = 'xop';
-                        else if (sym.includes('XBI')) baseSym = 'xbi';
-                        else if (sym.includes('SLV')) baseSym = 'slv';
-                        else if (sym.includes('SPY')) baseSym = 'spy';
-                        else if (sym.includes('QQQ')) baseSym = 'qqq';
+                        var baseSym = sym.replace('^', '').split('-')[0].toLowerCase();
                         
                         var currentPrice = inputVals[baseSym] || 0;
                         var basePrice = baseData.baseEtfPrices[sym];
@@ -2993,44 +2997,45 @@ def generate(futures_data=None, ib_data=None):
                 }
                 
                 var useIB = document.getElementById('source-ib') && document.getElementById('source-ib').checked;
+                var useFutu = document.getElementById('source-futu') && document.getElementById('source-futu').checked;
                 var badge = document.getElementById('active-source-badge');
-                var gldPrice = 0, usoPrice = 0, xopPrice = 0, xbiPrice = 0, xlyPrice = 0, slvPrice = 0, spyPrice = 0, qqqPrice = 0;
                 
-                console.log('===== calculateRealTimeValues 调试 =====');
-                console.log('数据源:', useIB ? 'IB' : '手工');
+                window.currentEtfPrices = {};
                 
-                // 根据用户的单选框，决定是从IB读取文本，还是从输入框读取数字
                 if (useIB) {
                     if(badge) { badge.textContent = '🟢 应用: IB夜盘'; badge.style.backgroundColor = '#e8f5e9'; badge.style.color = '#2e7d32'; badge.style.border = '1px solid #a5d6a7'; }
-                    var g = document.getElementById('ib-val-gld')?.textContent || '0';
-                    var u = document.getElementById('ib-val-uso')?.textContent || '0';
-                    var x = document.getElementById('ib-val-xop')?.textContent || '0';
-                    var xbi = document.getElementById('ib-val-xbi')?.textContent || '0';
-                    var xly = document.getElementById('ib-val-xly')?.textContent || '0';
-                    var s = document.getElementById('ib-val-slv')?.textContent || '0';
-                    var spy = document.getElementById('ib-val-spy')?.textContent || '0';
-                    var qqq = document.getElementById('ib-val-qqq')?.textContent || '0';
-                    gldPrice = parseFloat(g) || 0;
-                    usoPrice = parseFloat(u) || 0;
-                    xopPrice = parseFloat(x) || 0;
-                    xbiPrice = parseFloat(xbi) || 0;
-                    xlyPrice = parseFloat(xly) || 0;
-                    slvPrice = parseFloat(s) || 0;
-                    spyPrice = parseFloat(spy) || 0;
-                    qqqPrice = parseFloat(qqq) || 0;
+                    window.activeEtfs.forEach(function(sym) {
+                        var el = document.getElementById('ib-val-' + sym.toLowerCase());
+                        window.currentEtfPrices[sym] = el ? parseFloat(el.textContent) || 0 : 0;
+                    });
+                } else if (useFutu) {
+                    if(badge) { badge.textContent = '🟢 应用: 富途夜盘'; badge.style.backgroundColor = '#e3f2fd'; badge.style.color = '#1565c0'; badge.style.border = '1px solid #90caf9'; }
+                    window.activeEtfs.forEach(function(sym) {
+                        var el = document.getElementById('futu-val-' + sym.toLowerCase());
+                        window.currentEtfPrices[sym] = el ? parseFloat(el.textContent) || 0 : 0;
+                    });
                 } else {
                     if(badge) { badge.textContent = '✍️ 应用: 手工'; badge.style.backgroundColor = '#fff8e1'; badge.style.color = '#f57f17'; badge.style.border = '1px solid #ffe082'; }
-                    gldPrice = parseFloat(document.getElementById('gld-price')?.value) || 0;
-                    usoPrice = parseFloat(document.getElementById('uso-price')?.value) || 0;
-                    xopPrice = parseFloat(document.getElementById('xop-price')?.value) || 0;
-                    xbiPrice = parseFloat(document.getElementById('xbi-price')?.value) || 0;
-                    xlyPrice = parseFloat(document.getElementById('xly-price')?.value) || 0;
-                    slvPrice = parseFloat(document.getElementById('slv-price')?.value) || 0;
-                    spyPrice = parseFloat(document.getElementById('spy-price')?.value) || 0;
-                    qqqPrice = parseFloat(document.getElementById('qqq-price')?.value) || 0;
+                    window.activeEtfs.forEach(function(sym) {
+                        var el = document.getElementById(sym.toLowerCase() + '-price');
+                        window.currentEtfPrices[sym] = el ? parseFloat(el.value) || 0 : 0;
+                    });
                 }
                 
-                console.log('价格 - GLD:', gldPrice, 'USO:', usoPrice, 'XOP:', xopPrice, 'XBI:', xbiPrice, 'XLY:', xlyPrice, 'SLV:', slvPrice, 'SPY:', spyPrice, 'QQQ:', qqqPrice);
+                // 【关键修复】切换数据源后，同步更新所有已打开沙盘页面的ETF价格输入框
+                Object.keys(window.fundBaseData).forEach(function(code) {
+                    var inputs = document.querySelectorAll('.sandbox-input-' + code);
+                    inputs.forEach(function(inp) {
+                        var baseSym = inp.getAttribute('data-base');
+                        if (baseSym && window.currentEtfPrices && window.currentEtfPrices[baseSym.toUpperCase()] !== undefined) {
+                            inp.value = window.currentEtfPrices[baseSym.toUpperCase()];
+                        }
+                    });
+                    // 切换数据源后重新计算沙盘实时估值
+                    if (window.calcSandbox) window.calcSandbox(code);
+                });
+                
+                console.log('价格:', window.currentEtfPrices);
                 console.log('汇率元素:', document.getElementById('exchange-rate-display')?.textContent);
                 
                 var allRows = document.querySelectorAll('tbody tr');
@@ -3081,22 +3086,16 @@ def generate(futures_data=None, ib_data=None):
                         if (fData && fData.hedgingPortfolio && fData.hedgingPortfolio.length > 0) {
                             canCalculate = true;
                             fData.hedgingPortfolio.forEach(function(item) {
-                                var curP = 0;
-                                if (item.symbol.includes('GLD')) curP = gldPrice;
-                                else if (item.symbol.includes('USO')) curP = usoPrice;
-                                else if (item.symbol.includes('XOP')) curP = xopPrice;
-                                else if (item.symbol.includes('XBI')) curP = xbiPrice;
-                                else if (item.symbol.includes('XLY')) curP = xlyPrice;
-                                else if (item.symbol.includes('SLV')) curP = slvPrice;
-                                else if (item.symbol.includes('SPY')) curP = spyPrice;
-                                else if (item.symbol.includes('QQQ')) curP = qqqPrice;
-                                if (curP <= 0) canCalculate = false;
+                                var cleanSym = item.symbol.replace('^', '').split('-')[0].toUpperCase();
+                                if (!window.currentEtfPrices[cleanSym] || window.currentEtfPrices[cleanSym] <= 0) {
+                                    canCalculate = false;
+                                }
                             });
                         }
                         
                         if (canCalculate) {
                             
-                            var etfRealTimeValuation = window.calculateETFRealTimeValuation(code, category, gldPrice, usoPrice, xopPrice, xbiPrice, xlyPrice, slvPrice, spyPrice, qqqPrice, staticValuation);
+                            var etfRealTimeValuation = window.calculateETFRealTimeValuation(code, category, staticValuation);
                             
                             if (etfRealTimeValuation && etfRealTimeValuation > 0) {
                                 var etfRealTimePremium = (closePrice - etfRealTimeValuation) / etfRealTimeValuation * 100;
@@ -3139,21 +3138,9 @@ def generate(futures_data=None, ib_data=None):
                     }
                 });
                 
-                // 记录当前生效的主面板价格池，供沙盘同步使用
-                window.currentEtfPrices = {
-                    gld: gldPrice,
-                    uso: usoPrice,
-                    xop: xopPrice,
-                    xbi: xbiPrice,
-                    xly: xlyPrice,
-                    slv: slvPrice,
-                    spy: spyPrice,
-                    qqq: qqqPrice
-                };
-                
-                localStorage.setItem('nightSessionPrices', JSON.stringify({
-                    GLD: gldPrice, USO: usoPrice, XOP: xopPrice, XBI: xbiPrice, XLY: xlyPrice, SLV: slvPrice, SPY: spyPrice, QQQ: qqqPrice, timestamp: new Date().getTime()
-                }));
+                var storageObj = { timestamp: new Date().getTime() };
+                Object.assign(storageObj, window.currentEtfPrices);
+                localStorage.setItem('nightSessionPrices', JSON.stringify(storageObj));
                 
                 // 行情跳动后，刷新所有已打开沙盘的对冲数量
                 Object.keys(window.fundBaseData).forEach(function(c) {
@@ -3703,7 +3690,31 @@ def generate(futures_data=None, ib_data=None):
                     .catch(e => { alert('重连请求失败，请检查02后台是否运行'); fetchLofSource(); });
             }
             
+            function switchLofSource(source) {
+                var badge = document.getElementById('lof-source-badge');
+                if(badge) { badge.textContent = "切换中..."; badge.style.background = '#f5f5f5'; badge.style.color = '#333'; badge.style.border = '1px solid #ddd'; }
+                fetch('http://localhost:5000/api/set_lof_source', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({source: source})
+                })
+                    .then(r => r.json())
+                    .then(d => { 
+                        if(d.success) {
+                            // 切换成功，重新连接
+                            fetch('http://localhost:5000/api/reconnect_lof', {method: 'POST'})
+                                .then(r => r.json())
+                                .then(d => { setTimeout(fetchLofSource, 1500); });
+                        } else {
+                            alert('切换失败: ' + (d.error || '未知错误'));
+                            fetchLofSource();
+                        }
+                    })
+                    .catch(e => { alert('切换请求失败，请检查02后台是否运行'); fetchLofSource(); });
+            }
+            
             window.reconnectLofSource = reconnectLofSource;
+            window.switchLofSource = switchLofSource;
 
             window.onload = function() {
                 window.updateTime();
@@ -3730,14 +3741,12 @@ def generate(futures_data=None, ib_data=None):
                         
                         // 修复: 将过期时间从 1 小时放宽到 72 小时，避免周末停盘期间手工输入的数据丢失
                         if (timeDiff < 72 * 60 * 60 * 1000) {
-                            if (prices.GLD && document.getElementById('gld-price')) document.getElementById('gld-price').value = parseFloat(prices.GLD).toFixed(3);
-                            if (prices.USO && document.getElementById('uso-price')) document.getElementById('uso-price').value = parseFloat(prices.USO).toFixed(3);
-                            if (prices.XOP && document.getElementById('xop-price')) document.getElementById('xop-price').value = parseFloat(prices.XOP).toFixed(3);
-                            if (prices.XBI && document.getElementById('xbi-price')) document.getElementById('xbi-price').value = parseFloat(prices.XBI).toFixed(3);
-                            if (prices.XLY && document.getElementById('xly-price')) document.getElementById('xly-price').value = parseFloat(prices.XLY).toFixed(3);
-                            if (prices.SLV && document.getElementById('slv-price')) document.getElementById('slv-price').value = parseFloat(prices.SLV).toFixed(3);
-                            if (prices.SPY && document.getElementById('spy-price')) document.getElementById('spy-price').value = parseFloat(prices.SPY).toFixed(3);
-                            if (prices.QQQ && document.getElementById('qqq-price')) document.getElementById('qqq-price').value = parseFloat(prices.QQQ).toFixed(3);
+                            window.activeEtfs.forEach(function(sym) {
+                                var el = document.getElementById(sym.toLowerCase() + '-price');
+                                if (el && prices[sym]) {
+                                    el.value = parseFloat(prices[sym]).toFixed(3);
+                                }
+                            });
                             window.calculateRealTimeValues();
                         }
                     } catch (e) { console.error('解析本地存储数据失败:', e); }
@@ -3755,16 +3764,12 @@ def generate(futures_data=None, ib_data=None):
                         const prevCloses = data.prev_closes || {};
                         
                         // 仅更新 IB 展示行的数据，绝不干扰用户的手工输入框
-                        if (document.getElementById('ib-val-gld')) {
-                            document.getElementById('ib-val-gld').textContent = prices.GLD && prices.GLD.bid ? prices.GLD.bid.toFixed(2) : '-';
-                            document.getElementById('ib-val-uso').textContent = prices.USO && prices.USO.bid ? prices.USO.bid.toFixed(2) : '-';
-                            document.getElementById('ib-val-xop').textContent = prices.XOP && prices.XOP.bid ? prices.XOP.bid.toFixed(2) : '-';
-                            document.getElementById('ib-val-xbi').textContent = prices.XBI && prices.XBI.bid ? prices.XBI.bid.toFixed(2) : '-';
-                            document.getElementById('ib-val-xly').textContent = prices.XLY && prices.XLY.bid ? prices.XLY.bid.toFixed(2) : '-';
-                            document.getElementById('ib-val-slv').textContent = prices.SLV && prices.SLV.bid ? prices.SLV.bid.toFixed(2) : '-';
-                            if(document.getElementById('ib-val-spy')) document.getElementById('ib-val-spy').textContent = prices.SPY && prices.SPY.bid ? prices.SPY.bid.toFixed(2) : '-';
-                            if(document.getElementById('ib-val-qqq')) document.getElementById('ib-val-qqq').textContent = prices.QQQ && prices.QQQ.bid ? prices.QQQ.bid.toFixed(2) : '-';
-                        }
+                        window.activeEtfs.forEach(function(sym) {
+                            var ibEl = document.getElementById('ib-val-' + sym.toLowerCase());
+                            if (ibEl) {
+                                ibEl.textContent = prices[sym] && prices[sym].bid ? prices[sym].bid.toFixed(2) : '-';
+                            }
+                        });
 
                         // 动态更新已打开的 Sandbox 中的盘口信息
                         Object.keys(window.fundBaseData).forEach(function(fundCode) {
@@ -3808,28 +3813,20 @@ def generate(futures_data=None, ib_data=None):
                         const prevElement = document.getElementById('ib-prev-closes');
                         if (prevElement) {
                             // 彻底更新独立 Table 单元格，废弃纯文本写入
-                            if (document.getElementById('prev-val-gld')) document.getElementById('prev-val-gld').textContent = prevCloses.GLD ? prevCloses.GLD.toFixed(2) : '-';
-                            if (document.getElementById('prev-val-uso')) document.getElementById('prev-val-uso').textContent = prevCloses.USO ? prevCloses.USO.toFixed(2) : '-';
-                            if (document.getElementById('prev-val-xop')) document.getElementById('prev-val-xop').textContent = prevCloses.XOP ? prevCloses.XOP.toFixed(2) : '-';
-                            if (document.getElementById('prev-val-slv')) document.getElementById('prev-val-slv').textContent = prevCloses.SLV ? prevCloses.SLV.toFixed(2) : '-';
-                        if (document.getElementById('prev-val-xly')) document.getElementById('prev-val-xly').textContent = prevCloses.XLY ? prevCloses.XLY.toFixed(2) : '-';
-                        if (document.getElementById('prev-val-xbi')) document.getElementById('prev-val-xbi').textContent = prevCloses.XBI ? prevCloses.XBI.toFixed(2) : '-';
-                        if (document.getElementById('prev-val-spy')) document.getElementById('prev-val-spy').textContent = prevCloses.SPY ? prevCloses.SPY.toFixed(2) : '-';
-                        if (document.getElementById('prev-val-qqq')) document.getElementById('prev-val-qqq').textContent = prevCloses.QQQ ? prevCloses.QQQ.toFixed(2) : '-';
+                            window.activeEtfs.forEach(function(sym) {
+                                var prevEl = document.getElementById('prev-val-' + sym.toLowerCase());
+                                if (prevEl) {
+                                    prevEl.textContent = prevCloses[sym] ? prevCloses[sym].toFixed(2) : '-';
+                                }
+                            });
                         }
                         
                         window.calculateRealTimeValues();
                     } else if (data.status === 'error') {
-                        if (document.getElementById('ib-val-gld')) {
-                            document.getElementById('ib-val-gld').textContent = '未能读到实时数据';
-                            document.getElementById('ib-val-uso').textContent = '未能读到实时数据';
-                            document.getElementById('ib-val-xop').textContent = '未能读到实时数据';
-                            document.getElementById('ib-val-xbi').textContent = '未能读到实时数据';
-                            document.getElementById('ib-val-xly').textContent = '未能读到实时数据';
-                            document.getElementById('ib-val-slv').textContent = '未能读到实时数据';
-                            if(document.getElementById('ib-val-spy')) document.getElementById('ib-val-spy').textContent = '未能读到实时数据';
-                            if(document.getElementById('ib-val-qqq')) document.getElementById('ib-val-qqq').textContent = '未能读到实时数据';
-                        }
+                        window.activeEtfs.forEach(function(sym) {
+                            var ibEl = document.getElementById('ib-val-' + sym.toLowerCase());
+                            if (ibEl) ibEl.textContent = '未能读到实时数据';
+                        });
                         
                         // 更新已打开的 Sandbox 中的盘口信息为"未能读到实时数据"
                         Object.keys(window.fundBaseData).forEach(function(fundCode) {
@@ -3870,18 +3867,43 @@ def generate(futures_data=None, ib_data=None):
                     
                     // 无论 success 还是 error（非夜盘），只要后端传了昨收，就静默更新，解决白天没昨收数据的问题
                     const prevCloses = data.prev_closes || {};
-                    if (document.getElementById('prev-val-gld')) document.getElementById('prev-val-gld').textContent = prevCloses.GLD ? prevCloses.GLD.toFixed(2) : '-';
-                    if (document.getElementById('prev-val-uso')) document.getElementById('prev-val-uso').textContent = prevCloses.USO ? prevCloses.USO.toFixed(2) : '-';
-                    if (document.getElementById('prev-val-xop')) document.getElementById('prev-val-xop').textContent = prevCloses.XOP ? prevCloses.XOP.toFixed(2) : '-';
-                    if (document.getElementById('prev-val-slv')) document.getElementById('prev-val-slv').textContent = prevCloses.SLV ? prevCloses.SLV.toFixed(2) : '-';
-                    if (document.getElementById('prev-val-xly')) document.getElementById('prev-val-xly').textContent = prevCloses.XLY ? prevCloses.XLY.toFixed(2) : '-';
-                    if (document.getElementById('prev-val-spy')) document.getElementById('prev-val-spy').textContent = prevCloses.SPY ? prevCloses.SPY.toFixed(2) : '-';
-                    if (document.getElementById('prev-val-qqq')) document.getElementById('prev-val-qqq').textContent = prevCloses.QQQ ? prevCloses.QQQ.toFixed(2) : '-';
+                    window.activeEtfs.forEach(function(sym) {
+                        var prevEl = document.getElementById('prev-val-' + sym.toLowerCase());
+                        if (prevEl) {
+                            prevEl.textContent = prevCloses[sym] ? prevCloses[sym].toFixed(2) : '-';
+                        }
+                    });
                     
                 } catch (e) {
                     console.error('刷新IB价格失败:', e);
                 }
             }, 5000); // 从15秒缩短至5秒，加速夜盘数据抓取
+            
+            // 富途行情轮询
+            setInterval(async function() {
+                try {
+                    const response = await fetch('http://localhost:5000/api/futu_prices');
+                    const data = await response.json();
+                    if (data.status === 'success' && data.prices) {
+                        window.activeEtfs.forEach(function(sym) {
+                            var futuEl = document.getElementById('futu-val-' + sym.toLowerCase());
+                            if (futuEl) {
+                                futuEl.textContent = data.prices[sym] && data.prices[sym].bid ? data.prices[sym].bid.toFixed(2) : '-';
+                            }
+                        });
+                        if (document.getElementById('source-futu') && document.getElementById('source-futu').checked) {
+                            window.calculateRealTimeValues();
+                        }
+                    } else if (data.status === 'error') {
+                        window.activeEtfs.forEach(function(sym) {
+                            var futuEl = document.getElementById('futu-val-' + sym.toLowerCase());
+                            if (futuEl) futuEl.textContent = '未能读到数据';
+                        });
+                    }
+                } catch (e) {
+                    console.error('刷新富途价格失败:', e);
+                }
+            }, 5000);
         </script>
     '''
 
@@ -3989,15 +4011,19 @@ def generate(futures_data=None, ib_data=None):
     final_html += header_html
     
     # 判断数据来源
-    has_ib_data = bool(ib_night_prices.get('GLD') or ib_night_prices.get('USO') or ib_night_prices.get('XOP'))
-    gld_ib = f"{ib_night_prices.get('GLD', {}).get('bid', 0):.2f}" if ib_night_prices.get('GLD') else "-"
-    uso_ib = f"{ib_night_prices.get('USO', {}).get('bid', 0):.2f}" if ib_night_prices.get('USO') else "-"
-    xop_ib = f"{ib_night_prices.get('XOP', {}).get('bid', 0):.2f}" if ib_night_prices.get('XOP') else "-"
-    xbi_ib = f"{ib_night_prices.get('XBI', {}).get('bid', 0):.2f}" if ib_night_prices.get('XBI') else "-"
-    slv_ib = f"{ib_night_prices.get('SLV', {}).get('bid', 0):.2f}" if ib_night_prices.get('SLV') else "-"
-    xly_ib = f"{ib_night_prices.get('XLY', {}).get('bid', 0):.2f}" if ib_night_prices.get('XLY') else "-"
-    spy_ib = f"{ib_night_prices.get('SPY', {}).get('bid', 0):.2f}" if ib_night_prices.get('SPY') else "-"
-    qqq_ib = f"{ib_night_prices.get('QQQ', {}).get('bid', 0):.2f}" if ib_night_prices.get('QQQ') else "-"
+    has_ib_data = any(ib_night_prices.get(sym) for sym in active_etfs)
+    
+    # 检查富途数据
+    has_futu_data = False
+    try:
+        import requests
+        futu_resp = requests.get('http://localhost:5000/api/futu_prices', timeout=2)
+        if futu_resp.status_code == 200:
+            futu_data = futu_resp.json()
+            if futu_data.get('status') == 'success' and futu_data.get('prices'):
+                has_futu_data = any(futu_data['prices'].get(sym) for sym in active_etfs)
+    except:
+        pass
     
     ib_status_color = "#28a745" if has_ib_data else "#6c757d"
     if "未连接" in ib_status_message or "失败" in ib_status_message or "超时" in ib_status_message:
@@ -4022,15 +4048,13 @@ def generate(futures_data=None, ib_data=None):
             return f"{ib_prev_closes.get(symbol):.2f}"
         return "-"
     
-    prev_gld = get_prev_close('GLD')
-    prev_uso = get_prev_close('USO')
-    prev_xop = get_prev_close('XOP')
-    prev_xbi = get_prev_close('XBI')
-    prev_xly = get_prev_close('XLY')
-    prev_slv = get_prev_close('SLV')
-    prev_spy = get_prev_close('SPY')
-    prev_qqq = get_prev_close('QQQ')
-    prev_text = f"昨收(SMART): GLD ${prev_gld} | USO ${prev_uso} | XOP ${prev_xop} | XBI ${prev_xbi} | XLY ${prev_xly} | SLV ${prev_slv} | SPY ${prev_spy} | QQQ ${prev_qqq}"
+    # === 动态构建 HTML 表头和列 ===
+    etf_th_html = ''.join([f'<th style="font-size:13px; font-family: var(--font-mono); padding: 2px 4px;">{sym}</th>' for sym in active_etfs])
+    prev_tds = ''.join([f'<td id="prev-val-{sym.lower()}" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{get_prev_close(sym)}</td>' for sym in active_etfs])
+    # 注意：字典获取 bid 的写法兼容字典或嵌套对象
+    ib_tds = ''.join([f'<td id="ib-val-{sym.lower()}" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{f"{ib_night_prices.get(sym, {}).get(chr(98)+chr(105)+chr(100), 0):.2f}" if ib_night_prices.get(sym) else "-"}</td>' for sym in active_etfs])
+    futu_tds = ''.join([f'<td id="futu-val-{sym.lower()}" style="font-weight:bold;color:#2e7d32; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">-</td>' for sym in active_etfs])
+    manual_tds = ''.join([f'<td style="padding:2px 4px;"><input type="number" id="{sym.lower()}-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>' for sym in active_etfs])
         
     final_html += '        <div id="page-home" class="page-section active" style="margin-top: 0px; padding:0; background:transparent; box-shadow:none;">\n'
     # === 第二排：页头 + ABC控制面板 + IB夜盘数据 同排并列 ===
@@ -4040,7 +4064,7 @@ def generate(futures_data=None, ib_data=None):
     final_html += '            <div style="flex: 0 0 280px; background: white; padding: 8px 12px; border-radius: 6px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center; height: 118px;">\n'
     final_html += f'                <div style="font-size: 22px; font-weight: 700; color: #d32f2f; text-align: center; margin-bottom: 4px; letter-spacing: 1px;">LOF基金套利监控系统</div>\n'
     final_html += f'                <div style="font-size: 13px; color: var(--secondary-color); text-align: center; font-family: var(--font-mono);"><span id="current-date-time">{global_date_str}</span> | <span id="exchange-rate-display">{today_exchange_rate}</span></div>\n'
-    final_html += '                 <div style="font-size: 11px; text-align: center; margin-top: 6px; color: #666;">A股实时行情: <span id="lof-source-badge" style="font-weight:bold; background:#f5f5f5; color:#333; padding:2px 4px; border-radius:3px; border:1px solid #ddd; margin-right:4px;">检测中...</span> <button onclick="reconnectLofSource()" style="font-size:10px; padding:1px 4px; cursor:pointer; border:1px solid #ccc; border-radius:3px; background:#fff; color:#333;" title="如果您刚打开了QMT或通达信，点击此按钮可让程序重新挂载极速通道">🔄 尝试重连</button></div>\n'
+    final_html += '                 <div style="font-size: 11px; text-align: center; margin-top: 6px; color: #666;">A股实时行情: <select id="lof-source-select" onchange="switchLofSource(this.value)" style="font-size:10px; padding:1px 3px; cursor:pointer; border:1px solid #ccc; border-radius:3px; background:#fff; color:#333; font-weight:bold; margin-right:4px;"><option value="tongdaxin">通达信新版</option><option value="qmt">银河QMT</option><option value="sina">新浪API</option></select><span id="lof-source-badge" style="font-weight:bold; background:#f5f5f5; color:#333; padding:2px 4px; border-radius:3px; border:1px solid #ddd; margin-right:4px;">检测中...</span> <button onclick="reconnectLofSource()" style="font-size:10px; padding:1px 4px; cursor:pointer; border:1px solid #ccc; border-radius:3px; background:#fff; color:#333;" title="如果数据源连接断开，点击此按钮重连">🔄 重连</button></div>\n'
     final_html += '            </div>\n'
     
     # === 右侧：横排极致压缩版IB表格 (增加宽度) ===
@@ -4049,8 +4073,8 @@ def generate(futures_data=None, ib_data=None):
     final_html += '                    <table style="width: 100%; height: 100%; border-collapse: collapse; text-align: center;">\n'
     final_html += '                        <thead style="background-color: #e3f2fd; color: #1565c0; border-bottom: 1px solid #90caf9;">\n'
     final_html += '                            <tr style="height: 28px;">\n'
-    final_html += '                                <th style="padding: 2px 4px; text-align: left; width: 80px; border-right: 1px solid #bbdefb; font-size: 12px;">数据源</th>\n'
-    final_html += '                                <th style="font-size:13px; font-family: var(--font-mono); padding: 2px 4px;">GLD</th><th style="font-size:13px; font-family: var(--font-mono); padding: 2px 4px;">USO</th><th style="font-size:13px; font-family: var(--font-mono); padding: 2px 4px;">XOP</th><th style="font-size:13px; font-family: var(--font-mono); padding: 2px 4px;">XBI</th><th style="font-size:13px; font-family: var(--font-mono); padding: 2px 4px;">XLY</th><th style="font-size:13px; font-family: var(--font-mono); padding: 2px 4px;">SLV</th><th style="font-size:13px; font-family: var(--font-mono); padding: 2px 4px;">SPY</th><th style="font-size:13px; font-family: var(--font-mono); padding: 2px 4px;">QQQ</th>\n'
+    final_html += '                                <th style="padding: 2px 4px; text-align: left; width: 100px; border-right: 1px solid #bbdefb; font-size: 12px;">夜盘数据</th>\n'
+    final_html += f'                                {etf_th_html}\n'
     final_html += '                                <th style="width: 75px; border-left: 1px solid #bbdefb; font-size: 12px; padding: 2px 4px;">状态指示</th>\n'
     final_html += '                            </tr>\n'
     final_html += '                        </thead>\n'
@@ -4060,16 +4084,13 @@ def generate(futures_data=None, ib_data=None):
     final_html += '                                <td style="padding: 2px 4px; text-align: left; font-weight: bold; border-right: 1px dashed #dee2e6; font-size: 12px; color:#d35400;">对应期货</td>\n'
     final_html += '                                <td style="padding:2px 4px;"><span id="gc-price" style="font-weight:bold; color:#d35400; font-size: 13px;">-</span> <span id="gc-change" style="font-size:11px;"></span></td>\n'
     final_html += '                                <td style="padding:2px 4px;"><span id="cl-price" style="font-weight:bold; color:#d35400; font-size: 13px;">-</span> <span id="cl-change" style="font-size:11px;"></span></td>\n'
-    final_html += '                                <td style="padding:2px 4px; color:#999;">-</td>\n'
-    final_html += '                                <td style="padding:2px 4px; color:#999;">-</td>\n'
-    final_html += '                                <td style="padding:2px 4px; color:#999;">-</td>\n'
-    final_html += '                                <td style="padding:2px 4px; color:#999;">-</td>\n'
+    final_html += ''.join(['<td style="padding:2px 4px; color:#999;">-</td>' for _ in range(max(0, len(active_etfs)-4))]) + '\n'
     final_html += '                                <td style="padding:2px 4px;"><span id="es-price" style="font-weight:bold; color:#d35400; font-size: 13px;">-</span> <span id="es-change" style="font-size:11px;"></span></td>\n'
     final_html += '                                <td style="padding:2px 4px;"><span id="nq-price" style="font-weight:bold; color:#d35400; font-size: 13px;">-</span> <span id="nq-change" style="font-size:11px;"></span></td>\n'
     final_html += '                            <!-- 昨收盘 -->\n'
     final_html += '                            <tr style="border-bottom: 1px dashed #dee2e6; color: #6c757d; background-color: #fdfdfe; height: 24px;">\n'
     final_html += '                                <td style="padding: 2px 4px; text-align: left; font-weight: bold; border-right: 1px dashed #dee2e6; font-size: 12px;">昨收(SMART)</td>\n'
-    final_html += f'                                <td id="prev-val-gld" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{prev_gld}</td><td id="prev-val-uso" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{prev_uso}</td><td id="prev-val-xop" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{prev_xop}</td><td id="prev-val-xbi" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{prev_xbi}</td><td id="prev-val-xly" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{prev_xly}</td><td id="prev-val-slv" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{prev_slv}</td><td id="prev-val-spy" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{prev_spy}</td><td id="prev-val-qqq" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{prev_qqq}</td>\n'
+    final_html += f'                                {prev_tds}\n'
     final_html += f'                                <td rowspan="4" style="border-left: 1px solid #dee2e6; vertical-align: middle; background-color: #fff; padding: 2px;">\n'
     final_html += f'                                    <div id="active-source-badge" style="font-size: 10px; padding: 2px; border-radius: 2px; font-weight: bold; margin: 0 auto 2px; width: 70px; text-align: center; white-space: nowrap;"></div>\n'
     final_html += f'                                    <div id="ib-status-text" style="font-size: 10px; padding: 2px; border-radius: 2px; background-color: {ib_status_color}; color: white; max-width: 75px; margin: 0 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;" title="{ib_status_message}">{ib_status_message}</div>\n'
@@ -4079,26 +4100,28 @@ def generate(futures_data=None, ib_data=None):
     final_html += '                            <tr style="border-bottom: 1px dashed #dee2e6; background-color: #fff; height: 24px;">\n'
     final_html += '                                <td style="padding: 2px 4px; text-align: left; border-right: 1px dashed #dee2e6;">\n'
     final_html += f'                                    <label style="cursor: pointer; display: flex; align-items: center; gap: 2px; font-weight: bold; color: #1976d2; margin: 0; font-size: 11px; white-space: nowrap;">\n'
-    final_html += f'                                        <input type="radio" name="calc_source" id="source-ib" value="ib" {"checked" if has_ib_data else ""} onchange="window.calculateRealTimeValues()" style="margin: 0; transform: scale(0.7);"> 夜盘(买一)\n'
+    final_html += f'                                        <input type="radio" name="calc_source" id="source-ib" value="ib" {"checked" if has_ib_data else ""} onchange="window.calculateRealTimeValues()" style="margin: 0; transform: scale(0.7);"> IB夜盘(买一)\n'
     final_html += '                                    </label>\n'
     final_html += '                                </td>\n'
-    final_html += f'                                <td id="ib-val-gld" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{gld_ib}</td><td id="ib-val-uso" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{uso_ib}</td><td id="ib-val-xop" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{xop_ib}</td><td id="ib-val-xbi" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{xbi_ib}</td><td id="ib-val-xly" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{xly_ib}</td><td id="ib-val-slv" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{slv_ib}</td><td id="ib-val-spy" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{spy_ib}</td><td id="ib-val-qqq" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{qqq_ib}</td>\n'
+    final_html += f'                                {ib_tds}\n'
+    final_html += '                            </tr>\n'
+    final_html += '                            <!-- 富途夜盘 -->\n'
+    final_html += '                            <tr style="border-bottom: 1px dashed #dee2e6; background-color: #f8fbff; height: 24px;">\n'
+    final_html += '                                <td style="padding: 2px 4px; text-align: left; border-right: 1px dashed #dee2e6;">\n'
+    final_html += '                                    <label style="cursor: pointer; display: flex; align-items: center; gap: 2px; font-weight: bold; color: #0d47a1; margin: 0; font-size: 11px; white-space: nowrap;">\n'
+    final_html += '                                        <input type="radio" name="calc_source" id="source-futu" value="futu" {"checked" if not has_ib_data else ""} onchange="window.calculateRealTimeValues()" style="margin: 0; transform: scale(0.7);"> 富途夜盘(买一)\n'
+    final_html += '                                    </label>\n'
+    final_html += '                                </td>\n'
+    final_html += f'                                {futu_tds}\n'
     final_html += '                            </tr>\n'
     final_html += '                            <!-- 手工输入 -->\n'
     final_html += '                            <tr style="background-color: #fff; height: 24px;">\n'
     final_html += '                                <td style="padding: 2px 4px; text-align: left; border-right: 1px dashed #dee2e6;">\n'
     final_html += f'                                    <label style="cursor: pointer; display: flex; align-items: center; gap: 2px; font-weight: bold; color: #f57c00; margin: 0; font-size: 11px; white-space: nowrap;">\n'
-    final_html += f'                                        <input type="radio" name="calc_source" id="source-manual" value="manual" {"checked" if not has_ib_data else ""} onchange="window.calculateRealTimeValues()" style="margin: 0; transform: scale(0.7);"> 手工干预\n'
+    final_html += f'                                        <input type="radio" name="calc_source" id="source-manual" value="manual" {"checked" if not has_ib_data and not has_futu_data else ""} onchange="window.calculateRealTimeValues()" style="margin: 0; transform: scale(0.7);"> 手工输入\n'
     final_html += '                                    </label>\n'
     final_html += '                                </td>\n'
-    final_html += '                                <td style="padding:2px 4px;"><input type="number" id="gld-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>\n'
-    final_html += '                                <td style="padding:2px 4px;"><input type="number" id="uso-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>\n'
-    final_html += '                                <td style="padding:2px 4px;"><input type="number" id="xop-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>\n'
-    final_html += '                                <td style="padding:2px 4px;"><input type="number" id="xbi-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>\n'
-    final_html += '                                <td style="padding:2px 4px;"><input type="number" id="xly-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>\n'
-    final_html += '                                <td style="padding:2px 4px;"><input type="number" id="slv-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>\n'
-    final_html += '                                <td style="padding:2px 4px;"><input type="number" id="spy-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>\n'
-    final_html += '                                <td style="padding:2px 4px;"><input type="number" id="qqq-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>\n'
+    final_html += f'                                {manual_tds}\n'
     final_html += '                            </tr>\n'
     final_html += '                        </tbody>\n'
     final_html += '                    </table>\n'

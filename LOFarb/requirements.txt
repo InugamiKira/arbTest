@@ -16,6 +16,7 @@ plotly==5.18.0
 
 # 数据获取
 yfinance==0.2.37
+futu-api==8.3.4300  # 富途 OpenD API 依赖
 
 # 数据处理
 openpyxl==3.1.2  # 用于处理Excel文件

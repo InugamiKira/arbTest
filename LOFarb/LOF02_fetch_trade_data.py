@@ -42,6 +42,13 @@ from ibapi.wrapper import EWrapper
 from ibapi.contract import Contract
 from ibapi.order import Order
 
+# 尝试导入富途API
+try:
+    from futu import OpenQuoteContext, SubType, Session
+    FUTU_AVAILABLE = True
+except ImportError:
+    FUTU_AVAILABLE = False
+
 # 导入QMT Socket客户端
 from readers.qmt_socket_client import QmtSocketClient
 
@@ -236,6 +243,128 @@ def get_ib_night_prices():
         "message": "成功获取IB夜盘价格",
         "timestamp": ib_reader_instance.last_update_time.strftime('%Y-%m-%d %H:%M:%S') if ib_reader_instance.last_update_time else ""
     }
+
+def get_active_etf_symbols():
+    """动态解析配置文件，提取所有活跃的美股 ETF 标的"""
+    symbols = set()
+    try:
+        config_path = os.path.join(BASE_DIR, "lof_config.yaml")
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                cfg = yaml.safe_load(f)
+                for fund in cfg.get('funds', []):
+                    for item in fund.get('valuation_portfolio', []) + fund.get('hedging_portfolio', []):
+                        sym = item.get('symbol', '').replace('^', '').split('-')[0].upper()
+                        if sym and sym not in ['GC', 'CL', 'NQ', 'ES', 'AG', 'AG0', 'MGC', 'MCL', 'MES', 'MNQ']:
+                            symbols.add(sym)
+                    if fund.get('trade_etf'):
+                        for s in str(fund.get('trade_etf')).replace('，', ',').split(','):
+                            s = s.strip().upper()
+                            if s and s not in ['GC', 'CL', 'NQ', 'ES', 'AG', 'AG0', 'MGC', 'MCL', 'MES', 'MNQ']:
+                                symbols.add(s)
+    except:
+        pass
+    # 兜底默认列表
+    return list(symbols) if symbols else ['GLD', 'USO', 'XOP', 'XBI', 'XLY', 'SLV', 'SPY', 'QQQ', 'INDA', 'KWEB', 'RSPH']
+
+class FutuReader:
+    """富途行情长连接读取器"""
+    def __init__(self):
+        self.ctx = None
+        self.prices = {}
+        self.subscribed_codes = set()
+        self.last_connect_time = 0
+        self.last_log_time = 0
+        
+    def close(self):
+        if self.ctx:
+            try: self.ctx.close()
+            except: pass
+            self.ctx = None
+
+    def get_prices(self, symbols):
+        if not FUTU_AVAILABLE:
+            return False, "未安装 futu-api 库 (pip install futu-api)", self.prices
+            
+        try:
+            # 限制重连频率，避免富途OpenD未启动时狂刷错误
+            if self.ctx is None:
+                if time.time() - self.last_connect_time < 10:
+                    return False, "富途OpenD未连接 (等待重连...)", self.prices
+                self.last_connect_time = time.time()
+                self.ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
+                self.subscribed_codes = set()
+            
+            futu_codes = [f"US.{sym}" for sym in symbols]
+            new_codes = [c for c in futu_codes if c not in self.subscribed_codes]
+            
+            # 订阅新增加的股票，指定 Session.ALL 获取夜盘
+            if new_codes:
+                ret, data = self.ctx.subscribe(new_codes, [SubType.QUOTE], session=Session.ALL)
+                if ret != 0:
+                    return False, f"订阅失败: {data}", self.prices
+                self.subscribed_codes.update(new_codes)
+            
+            ret, data = self.ctx.get_stock_quote(futu_codes)
+            if ret == 0:
+                for _, row in data.iterrows():
+                    code = row['code'].replace('US.', '')
+                    bid = 0.0
+                    ask = 0.0
+                    last = 0.0
+                    
+                    # 【修复】优先使用真正的买一价/卖一价，兼容夜盘数据
+                    # bid_price_0 = 买一价, ask_price_0 = 卖一价, last_price = 最新价
+                    if 'bid_price_0' in row and pd.notna(row['bid_price_0']) and float(row['bid_price_0']) > 0:
+                        bid = float(row['bid_price_0'])
+                    if 'ask_price_0' in row and pd.notna(row['ask_price_0']) and float(row['ask_price_0']) > 0:
+                        ask = float(row['ask_price_0'])
+                    if 'last_price' in row and pd.notna(row['last_price']) and float(row['last_price']) > 0:
+                        last = float(row['last_price'])
+                    
+                    # 如果买一/卖一都缺失，尝试使用夜盘/盘前/盘后/最新价作为兜底
+                    if bid <= 0 or ask <= 0:
+                        # 优先级：夜盘 > 盘前 > 盘后 > 常规盘最新价
+                        fallback_price = 0.0
+                        if 'overnight_price' in row and pd.notna(row['overnight_price']) and float(row['overnight_price']) > 0:
+                            fallback_price = float(row['overnight_price'])
+                        elif 'pre_price' in row and pd.notna(row['pre_price']) and float(row['pre_price']) > 0:
+                            fallback_price = float(row['pre_price'])
+                        elif 'after_price' in row and pd.notna(row['after_price']) and float(row['after_price']) > 0:
+                            fallback_price = float(row['after_price'])
+                        elif 'last_price' in row and pd.notna(row['last_price']) and float(row['last_price']) > 0:
+                            fallback_price = float(row['last_price'])
+                        
+                        if fallback_price > 0:
+                            if bid <= 0: bid = fallback_price
+                            if ask <= 0: ask = fallback_price
+                    
+                    # 如果仍有缺失，用last_price兜底bid/ask
+                    if bid <= 0 and last > 0: bid = last
+                    if ask <= 0 and last > 0: ask = last
+                    if bid > 0 and ask <= 0: ask = bid  # 防止bid有值但ask为空
+                    
+                    if bid > 0:
+                        self.prices[code] = {'bid': bid, 'ask': ask, 'last': last if last > 0 else bid}
+                        
+                # 增加控制台心跳回显 (每30秒打印一次)
+                current_time = time.time()
+                if current_time - self.last_log_time >= 30:
+                    if self.prices:
+                        price_strs = [f"{k}=${v['bid']:.2f}" for k, v in self.prices.items()]
+                        print(f"🦉 [富途OpenD] 实时夜盘: {', '.join(price_strs)}")
+                    self.last_log_time = current_time
+                        
+                return True, "成功获取富途夜盘价格", self.prices
+            else:
+                return False, f"获取数据失败: {data}", self.prices
+                
+        except Exception as e:
+            self.close()
+            return False, f"富途接口异常: {str(e)}", self.prices
+
+futu_reader = FutuReader()
+atexit.register(futu_reader.close)
 
 class SinaFuturesReader:
     def __init__(self):
@@ -485,13 +614,14 @@ class SSEFuturesReader:
                 self.retry_delay = min(self.retry_delay*2, 30.0)
 
 class LOFPriceReader:
-    """LOF实时盘口报价读取器：QMT Socket优先 > 通达信推送/快照 > 新浪API兜底"""
+    """LOF实时盘口报价读取器：支持手动选择数据源（通达信新版 > 银河QMT > 新浪API）"""
     def __init__(self):
         self.lof_prices = {}
         self.running = False
         self.use_tdx = False
         self.use_qmt = False
-        self.use_guojin = False
+        # self.use_guojin = False  # 国金QMT已注释，用户不使用
+        self.preferred_source = "tongdaxin"  # 默认使用通达信新版
         self.start_time = time.time()
         
         # QMT Socket客户端
@@ -519,9 +649,10 @@ class LOFPriceReader:
         return f"{code}.SH" if code.startswith('5') else f"{code}.SZ"
         
     def get_source_name(self):
+        # 根据实际连接状态返回数据源名称
         if self.use_qmt: return "银河QMT (Socket极速)"
         if self.use_tdx: return "通达信 (内存直连)"
-        if self.use_guojin: return "国金QMT (原生直连)"
+        # if self.use_guojin: return "国金QMT (原生直连)"
         return "新浪API (轮询兜底)"
 
     def reconnect(self):
@@ -564,105 +695,117 @@ class LOFPriceReader:
             self.running = True
             self.use_qmt = False
             self.use_tdx = False
+            # self.use_guojin = False  # 国金QMT已注释
             print("\n" + "="*55)
-            print("📡 [行情引擎] 正在初始化 A股 LOF 实时行情流...")
+            print(f"📡 [行情引擎] 正在初始化 A股 LOF 实时行情流... (首选: {self.preferred_source})")
             
-            # 【优先级1】尝试挂载银河QMT Socket长连接
-            try:
-                def on_qmt_price_update(code, raw_price):
-                    # 健壮性修复：检查 raw_price 是否为有效数字，过滤掉时间戳等异常数据
-                    try:
-                        # 尝试将 raw_price 转换为浮点数。如果失败，说明不是价格数据，直接忽略。
-                        price_from_raw = float(raw_price)
-                    except (ValueError, TypeError):
-                        return # 静默忽略非价格数据
-
-                    clean_code = code.split('.')[0] if '.' in code else code
-                    
-                    # 尝试从 qmt_client 提取完整五档盘口字典
-                    order_book = None
-                    if hasattr(self, 'qmt_client') and self.qmt_client:
-                        order_book = self.qmt_client.get_order_book(clean_code)
-                        
-                    # 严格遵循“卖一价”原则，如果卖一价为0（如涨停封板），则兜底使用 raw_price (通常是最新成交价)
-                    price = price_from_raw # 使用已经验证过的数字
-                    if order_book:
-                        ask1 = float(order_book.get('ask1_p', order_book.get('ask_p1', 0)))
-                        if ask1 > 0:
-                            price = ask1
-                            
-                    old_price = self.lof_prices.get(clean_code, 0)
-                    self.lof_prices[clean_code] = price
-                    
-                    if not hasattr(self, '_qmt_success_logged') and price > 0:
-                        print("  ✅ [行情状态] 银河QMT数据接收成功，行情链路畅通！")
-                        self._qmt_success_logged = True
-                        
-                    # 1. 满足你在黑窗口看日志的需求 (为了防止刷屏太快，只在首次或价格变动时打印)
-                    log_flag = f'_tick_logged_{clean_code}'
-                    if order_book and (old_price != price or not hasattr(self, log_flag)):
-                        ask1_print = order_book.get('ask1_p', order_book.get('ask_p1', price_from_raw))
-                        last_p = order_book.get('last_price', price_from_raw)
-                        print(f"⚡ [银河] {clean_code} 价格更新: {price:.3f} (卖一: {float(ask1_print):.3f}, 最新: {float(last_p):.3f})")
-                        setattr(self, log_flag, True)
-
-                    # 2. 将五档盘口打包，通过 WebSocket 穿透推送到前端自留地
-                    payload = {
-                        'code': clean_code,
-                        'price': price,
-                        'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3]
-                    }
-                    if order_book:
-                        payload['order_book'] = order_book # 附加五档数据
-                        # 额外发送沙盘专属深度数据事件
-                        socketio.emit('lof_order_book_update', {'code': clean_code, 'data': order_book})
-
-                    # 只要价格变动或者带有盘口数据，就推送给前端
-                    if old_price != price or order_book:
-                        socketio.emit('lof_price_update', payload)
-                
-                self.qmt_client = QmtSocketClient(on_price_update=on_qmt_price_update)
-                if self.qmt_client.connect():
-                    self.qmt_client.start_long_connection()
-                    qmt_codes = [self._get_qmt_code(c) for c in self.lof_codes]
-                    self.qmt_client.subscribe(qmt_codes)
-                    
-                    self.use_qmt = True
-                    print("  🚀 [引擎启动] 首选引擎【银河QMT Socket】已成功挂载！")
-                else:
-                    print("  ⚠️ [引擎降级] 银河QMT Socket(8888端口)连接被拒绝，请确认QMT内是否已运行Server端！")
-            except Exception as e:
-                print(f"  ⚠️ [引擎降级] 银河QMT初始化失败({e})，尝试备用通道...")
-                self.use_qmt = False
-                if self.qmt_client:
-                    self.qmt_client.stop()
-                    self.qmt_client = None
+            # 【根据用户选择的数据源决定连接策略】
+            source_priority = []
+            if self.preferred_source == 'tongdaxin':
+                source_priority = ['tongdaxin', 'sina']
+            elif self.preferred_source == 'qmt':
+                source_priority = ['qmt', 'tongdaxin', 'sina']
+            else:  # sina
+                source_priority = ['sina']
             
-            if not self.use_qmt:
-                # 如果没连上QMT，需要使用通达信，则此时触发懒加载
+            # 【通达信新版】(优先级取决于用户选择)
+            if 'tongdaxin' in source_priority:
                 init_trade_manager()
                 if TDX_AVAILABLE and tq:
                     try:
                         tq.initialize(__file__)
                         self.use_tdx = True
-                        print("  🚀 [引擎启动] 备用引擎【通达信内存直连】已成功挂载！")
+                        print("  🚀 [引擎启动] 【通达信新版】已成功挂载！")
                         print("  💡 [系统提示] 请确保您的通达信客户端已登录并保持运行。")
                     except Exception as e:
                         self.use_tdx = False
-                        print(f"  ⚠️ [引擎降级] 通达信初始化失败({e})，尝试下一通道...")
+                        print(f"  ⚠️ [引擎降级] 通达信新版初始化失败({e})，尝试下一通道...")
             
-            if not self.use_qmt and not self.use_tdx:
+            # 【银河QMT Socket】(仅当首选或通达信失败时)
+            if not self.use_tdx and 'qmt' in source_priority:
                 try:
-                    from xtquant import xtdata
-                    _ = xtdata.get_full_tick(['510300.SH'])
-                    self.use_guojin = True
-                    print("  🚀 [引擎启动] 备用引擎【国金QMT (xtquant)】已成功挂载！")
-                    print("  💡 [系统提示] 请确保您的国金QMT/miniQMT已登录并保持运行。")
-                except Exception as e:
-                    self.use_guojin = False
-                    print(f"  ⚠️ [引擎降级] 国金QMT初始化失败({e})，退回至新浪API模式")
+                    def on_qmt_price_update(code, raw_price):
+                        # 健壮性修复：检查 raw_price 是否为有效数字，过滤掉时间戳等异常数据
+                        try:
+                            # 尝试将 raw_price 转换为浮点数。如果失败，说明不是价格数据，直接忽略。
+                            price_from_raw = float(raw_price)
+                        except (ValueError, TypeError):
+                            return # 静默忽略非价格数据
 
-            if not self.use_qmt and not self.use_tdx and not self.use_guojin:
+                        clean_code = code.split('.')[0] if '.' in code else code
+                        
+                        # 尝试从 qmt_client 提取完整五档盘口字典
+                        order_book = None
+                        if hasattr(self, 'qmt_client') and self.qmt_client:
+                            order_book = self.qmt_client.get_order_book(clean_code)
+                            
+                        # 严格遵循"卖一价"原则，如果卖一价为0（如涨停封板），则兜底使用 raw_price (通常是最新成交价)
+                        price = price_from_raw # 使用已经验证过的数字
+                        if order_book:
+                            ask1 = float(order_book.get('ask1_p', order_book.get('ask_p1', 0)))
+                            if ask1 > 0:
+                                price = ask1
+                                
+                        old_price = self.lof_prices.get(clean_code, 0)
+                        self.lof_prices[clean_code] = price
+                        
+                        if not hasattr(self, '_qmt_success_logged') and price > 0:
+                            print("  ✅ [行情状态] 银河QMT数据接收成功，行情链路畅通！")
+                            self._qmt_success_logged = True
+                            
+                        # 1. 满足你在黑窗口看日志的需求 (为了防止刷屏太快，只在首次或价格变动时打印)
+                        log_flag = f'_tick_logged_{clean_code}'
+                        if order_book and (old_price != price or not hasattr(self, log_flag)):
+                            ask1_print = order_book.get('ask1_p', order_book.get('ask_p1', price_from_raw))
+                            last_p = order_book.get('last_price', price_from_raw)
+                            print(f"⚡ [银河] {clean_code} 价格更新: {price:.3f} (卖一: {float(ask1_print):.3f}, 最新: {float(last_p):.3f})")
+                            setattr(self, log_flag, True)
+
+                        # 2. 将五档盘口打包，通过 WebSocket 穿透推送到前端自留地
+                        payload = {
+                            'code': clean_code,
+                            'price': price,
+                            'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3]
+                        }
+                        if order_book:
+                            payload['order_book'] = order_book # 附加五档数据
+                            # 额外发送沙盘专属深度数据事件
+                            socketio.emit('lof_order_book_update', {'code': clean_code, 'data': order_book})
+
+                        # 只要价格变动或者带有盘口数据，就推送给前端
+                        if old_price != price or order_book:
+                            socketio.emit('lof_price_update', payload)
+                    
+                    self.qmt_client = QmtSocketClient(on_price_update=on_qmt_price_update)
+                    if self.qmt_client.connect():
+                        self.qmt_client.start_long_connection()
+                        qmt_codes = [self._get_qmt_code(c) for c in self.lof_codes]
+                        self.qmt_client.subscribe(qmt_codes)
+                        
+                        self.use_qmt = True
+                        print("  🚀 [引擎启动] 【银河QMT Socket】已成功挂载！")
+                    else:
+                        print("  ⚠️ [引擎降级] 银河QMT Socket(8888端口)连接被拒绝，请确认QMT内是否已运行Server端！")
+                except Exception as e:
+                    print(f"  ⚠️ [引擎降级] 银河QMT初始化失败({e})，尝试下一通道...")
+                    self.use_qmt = False
+                    if self.qmt_client:
+                        self.qmt_client.stop()
+                        self.qmt_client = None
+            
+            # 【国金QMT已注释】用户不使用
+            # if not self.use_qmt and not self.use_tdx:
+            #     try:
+            #         from xtquant import xtdata
+            #         _ = xtdata.get_full_tick(['510300.SH'])
+            #         self.use_guojin = True
+            #         print("  🚀 [引擎启动] 备用引擎【国金QMT (xtquant)】已成功挂载！")
+            #         print("  💡 [系统提示] 请确保您的国金QMT/miniQMT已登录并保持运行。")
+            #     except Exception as e:
+            #         self.use_guojin = False
+            #         print(f"  ⚠️ [引擎降级] 国金QMT初始化失败({e})，退回至新浪API模式")
+
+            if not self.use_qmt and not self.use_tdx:
                 print("  🐌 [引擎启动] 最终兜底引擎【新浪轮询爬虫】已启用 (间隔20秒)")
             print("="*55 + "\n")
                     
@@ -743,54 +886,55 @@ class LOFPriceReader:
                         except: pass
                     time.sleep(10) # 纯本地读取，10秒足够高频，也不会卡死
                     
-                elif self.use_guojin:
-                    # ======== 模式三：国金QMT (xtquant) ========
-                    try:
-                        from xtquant import xtdata
-                        if set(self.lof_codes) != last_codes:
-                            last_codes = set(self.lof_codes)
-                            new_stocks = [self._get_qmt_code(c) for c in self.lof_codes]
-                            if new_stocks:
-                                for stock in new_stocks:
-                                    xtdata.subscribe_quote(stock, period='tick', count=1)
-                        
-                        guojin_stocks = [self._get_qmt_code(c) for c in self.lof_codes]
-                        ticks = xtdata.get_full_tick(guojin_stocks)
-                        
-                        # 掉线自动降级检测：如果连续15秒拿不到任何有效Tick数据
-                        if not ticks or all(not t for t in ticks.values()):
-                            self._guojin_empty_count = getattr(self, '_guojin_empty_count', 0) + 1
-                            if self._guojin_empty_count > 15:
-                                print("  ⚠️ [行情告警] 国金QMT连续15秒未返回有效数据(可能已关闭)。自动降级至【新浪API兜底】！")
-                                self.use_guojin = False
-                        else:
-                            self._guojin_empty_count = 0
-                        
-                        for stock, tick in ticks.items():
-                            if tick:
-                                ask_prices = tick.get('askPrice', [0])
-                                price_to_use = float(ask_prices[0]) if ask_prices else 0
-                                if price_to_use == 0:
-                                    price_to_use = float(tick.get('lastPrice', 0))
-                                
-                                if price_to_use > 0:
-                                    code = stock.split('.')[0]
-                                    old_price = self.lof_prices.get(code, 0)
-                                    self.lof_prices[code] = price_to_use
-                                    if old_price != price_to_use:
-                                        socketio.emit('lof_price_update', {
-                                            'code': code,
-                                            'price': price_to_use,
-                                            'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3]
-                                        })
-                                    if not getattr(self, '_guojin_success_logged', False):
-                                        print(f"  ✅ [行情状态] 国金QMT接口首次获取 {code} 成功，链路畅通！")
-                                        self._guojin_success_logged = True
-                    except Exception as e:
-                        self._guojin_err_count = getattr(self, '_guojin_err_count', 0) + 1
-                        if self._guojin_err_count > 3:
-                            print(f"  ⚠️ [行情告警] 国金QMT接口崩溃 ({e})。自动降级至【新浪API兜底】！")
-                            self.use_guojin = False
+                # 【国金QMT已注释】用户不使用
+                # elif self.use_guojin:
+                #     # ======== 模式三：国金QMT (xtquant) ========
+                #     try:
+                #         from xtquant import xtdata
+                #         if set(self.lof_codes) != last_codes:
+                #             last_codes = set(self.lof_codes)
+                #             new_stocks = [self._get_qmt_code(c) for c in self.lof_codes]
+                #             if new_stocks:
+                #                 for stock in new_stocks:
+                #                     xtdata.subscribe_quote(stock, period='tick', count=1)
+                #         
+                #         guojin_stocks = [self._get_qmt_code(c) for c in self.lof_codes]
+                #         ticks = xtdata.get_full_tick(guojin_stocks)
+                #         
+                #         # 掉线自动降级检测：如果连续15秒拿不到任何有效Tick数据
+                #         if not ticks or all(not t for t in ticks.values()):
+                #             self._guojin_empty_count = getattr(self, '_guojin_empty_count', 0) + 1
+                #             if self._guojin_empty_count > 15:
+                #                 print("  ⚠️ [行情告警] 国金QMT连续15秒未返回有效数据(可能已关闭)。自动降级至【新浪API兜底】！")
+                #                 self.use_guojin = False
+                #         else:
+                #             self._guojin_empty_count = 0
+                #         
+                #         for stock, tick in ticks.items():
+                #             if tick:
+                #                 ask_prices = tick.get('askPrice', [0])
+                #                 price_to_use = float(ask_prices[0]) if ask_prices else 0
+                #                 if price_to_use == 0:
+                #                     price_to_use = float(tick.get('lastPrice', 0))
+                #                 
+                #                 if price_to_use > 0:
+                #                     code = stock.split('.')[0]
+                #                     old_price = self.lof_prices.get(code, 0)
+                #                     self.lof_prices[code] = price_to_use
+                #                     if old_price != price_to_use:
+                #                         socketio.emit('lof_price_update', {
+                #                             'code': code,
+                #                             'price': price_to_use,
+                #                             'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3]
+                #                         })
+                #                     if not getattr(self, '_guojin_success_logged', False):
+                #                         print(f"  ✅ [行情状态] 国金QMT接口首次获取 {code} 成功，链路畅通！")
+                #                         self._guojin_success_logged = True
+                #     except Exception as e:
+                #         self._guojin_err_count = getattr(self, '_guojin_err_count', 0) + 1
+                #         if self._guojin_err_count > 3:
+                #             print(f"  ⚠️ [行情告警] 国金QMT接口崩溃 ({e})。自动降级至【新浪API兜底】！")
+                #             self.use_guojin = False
             
                 # ======== 终极颗粒度兜底：新浪外网爬虫 ========
                 # 无论什么引擎为主，只要有基金价格是 0（断流或懒加载拦截），新浪立刻补位！
@@ -821,8 +965,8 @@ class LOFPriceReader:
                             except: pass
                     self._last_sina_time = current_time
                     
-                # 引擎休眠控制
-                if self.use_qmt or self.use_guojin: time.sleep(1)
+                # 引擎休眠控制（银河QMT和通达信不需要休眠，实时推送或本地读取）
+                if self.use_qmt: time.sleep(1)
                 elif self.use_tdx: time.sleep(10)
                 else: time.sleep(20)
 
@@ -943,6 +1087,24 @@ def get_ib_prices():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e), 'prices': {}}), 500
 
+@app.route('/api/futu_prices')
+def get_futu_prices():
+    """
+    富途API夜盘数据接口 (对接前端的轮询)
+    """
+    try:
+        symbols = get_active_etf_symbols()
+        success, msg, prices = futu_reader.get_prices(symbols)
+        
+        return jsonify({
+            'status': 'success' if success else 'error',
+            'message': msg,
+            'prices': prices,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e), 'prices': {}}), 500
+
 @app.route('/api/exchange_rate')
 def get_exchange_rate():
     """供前端实时拉取最新的汇率及对应日期"""
@@ -977,6 +1139,28 @@ def get_lof_source():
 def reconnect_lof():
     lof_price_reader.reconnect()
     return jsonify({'status': 'success', 'source': lof_price_reader.get_source_name()})
+
+@app.route('/api/set_lof_source', methods=['POST'])
+def set_lof_source():
+    """设置LOF数据源（tongdaxin=通达信新版, qmt=银河QMT, sina=新浪API）"""
+    data = request.get_json()
+    source = data.get('source', 'sina') if data else 'sina'
+    
+    # 验证数据源有效性
+    valid_sources = ['tongdaxin', 'qmt', 'sina']
+    if source not in valid_sources:
+        return jsonify({'success': False, 'error': f'无效的数据源: {source}'})
+    
+    lof_price_reader.preferred_source = source
+    
+    # 重新连接以应用新数据源
+    lof_price_reader.reconnect()
+    
+    return jsonify({
+        'success': True, 
+        'source': source,
+        'connected_source': lof_price_reader.get_source_name()
+    })
 
 @app.route('/api/order_book/<code>')
 def get_order_book(code):
