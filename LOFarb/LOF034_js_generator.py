@@ -98,6 +98,64 @@ class JsGenerator:
                 }
             });
 
+            // 🌟 接收 IB 夜盘价格极速更新
+            function updateIbDomPrices(prices) {
+                if (!prices) return;
+                var hasValidData = false;
+                Object.keys(prices).forEach(function(sym) {
+                    var el = document.getElementById('ib-val-' + sym.toLowerCase());
+                    if (el && prices[sym] && prices[sym].bid) {
+                        hasValidData = true;
+                        var newPrice = prices[sym].bid.toFixed(2);
+                        if (el.textContent !== newPrice) {
+                            el.textContent = newPrice;
+                            el.style.color = '#d32f2f';
+                            setTimeout(function() { el.style.color = '#1976d2'; }, 500);
+                        }
+                    }
+                });
+                
+                // 动态点亮状态指示牌 (仅当选中的是IB时才改变牌子)
+                var isIbSelected = document.getElementById('source-ib') && document.getElementById('source-ib').checked;
+                if (hasValidData && isIbSelected) {
+                    var statusEl = document.getElementById('ib-status-text');
+                    if (statusEl) {
+                        statusEl.textContent = 'IB夜盘数据已连通更新';
+                        statusEl.style.backgroundColor = '#1976d2'; // IB 专属蓝色
+                    }
+                }
+            }
+
+            socket.on('ib_price_snapshot', function(data) {
+                if (data && data.prices) {
+                    window.latestIbPrices = window.latestIbPrices || {};
+                    Object.assign(window.latestIbPrices, data.prices);
+                    updateIbDomPrices(data.prices);
+                    var isIb = document.getElementById('source-ib') && document.getElementById('source-ib').checked;
+                    if (isIb) window.calculateRealTimeValues();
+                }
+            });
+
+            socket.on('ib_price_update', function(data) {
+                window.latestIbPrices = window.latestIbPrices || {};
+                var pricesToUpdate = null;
+                if (data && data.prices) {
+                    pricesToUpdate = data.prices;
+                } else if (data && data.symbol) {
+                    pricesToUpdate = {};
+                    pricesToUpdate[data.symbol] = data;
+                } else if (data) {
+                    pricesToUpdate = data;
+                }
+                
+                if (pricesToUpdate) {
+                    Object.assign(window.latestIbPrices, pricesToUpdate);
+                    updateIbDomPrices(pricesToUpdate);
+                    var isIb = document.getElementById('source-ib') && document.getElementById('source-ib').checked;
+                    if (isIb) window.calculateRealTimeValues();
+                }
+            });
+
             // 🌟 接收 A股 五档盘口极速更新 (打通 TAB5 自留地沙盘的"最后一公里")
             socket.on('lof_order_book_update', function(data) {
                 // 1. 全局缓存最新盘口数据，供沙盘随时提取
@@ -288,15 +346,15 @@ class JsGenerator:
                 var inputs = document.querySelectorAll('.sandbox-input-' + code);
                 inputs.forEach(function(inp) {
                     var baseSym = inp.getAttribute('data-base');
+                    var upperSym = baseSym ? baseSym.toUpperCase() : '';
                     
                     // 严格同步主面板当前生效的测试价 (无论是手工干预还是IB夜盘)
-                    if (window.currentEtfPrices && window.currentEtfPrices[baseSym] !== undefined && window.currentEtfPrices[baseSym] > 0) {
-                        inp.value = window.currentEtfPrices[baseSym];
+                    if (window.currentEtfPrices && window.currentEtfPrices[upperSym] !== undefined && window.currentEtfPrices[upperSym] > 0) {
+                        inp.value = window.currentEtfPrices[upperSym];
                     } else {
                         // 兜底逻辑：如果全局变量未初始化，则依据单选状态提取
                         var useIB = document.getElementById('source-ib') && document.getElementById('source-ib').checked;
                         if (useIB) {
-                            var upperSym = baseSym.toUpperCase();
                             if (window.latestIbPrices && window.latestIbPrices[upperSym] && window.latestIbPrices[upperSym].bid) {
                                 inp.value = window.latestIbPrices[upperSym].bid;
                             } else {
@@ -553,8 +611,13 @@ class JsGenerator:
                 window.currentEtfPrices = {};
                 window.activeEtfs.forEach(function(sym) {
                     var price = 0;
-                    if (isIb && window.latestIbPrices && window.latestIbPrices[sym] && window.latestIbPrices[sym].bid) {
-                        price = window.latestIbPrices[sym].bid;
+                    if (isIb) {
+                        if (window.latestIbPrices && window.latestIbPrices[sym] && window.latestIbPrices[sym].bid) {
+                            price = window.latestIbPrices[sym].bid;
+                        } else {
+                            var ibValEl = document.getElementById('ib-val-' + sym.toLowerCase());
+                            if (ibValEl) price = parseFloat(ibValEl.textContent);
+                        }
                     } else if (isFutu && window.latestFutuPrices && window.latestFutuPrices[sym] && window.latestFutuPrices[sym].bid) {
                         price = window.latestFutuPrices[sym].bid;
                     } else if (isManual) {
@@ -804,10 +867,28 @@ class JsGenerator:
                 var code = document.getElementById('export-fund-code').value;
                 var msgEl = document.getElementById('export-msg');
                 if (!code || code.length !== 6) return;
-                var downloadUrl = 'http://localhost:5000/api/export_fund/' + code;
-                var a = document.createElement('a');
-                a.href = downloadUrl; a.download = 'fund_' + code + '_export.csv';
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                
+                msgEl.textContent = "⏳ 正在生成对账文件...";
+                msgEl.style.color = "#1565c0";
+                
+                fetch('/api/export_fund/' + code)
+                    .then(res => {
+                        if (!res.ok) { return res.json().then(err => { throw new Error(err.message || '导出失败'); }); }
+                        return res.blob();
+                    })
+                    .then(blob => {
+                        var url = window.URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url; a.download = 'fund_' + code + '_export.csv';
+                        document.body.appendChild(a); a.click(); a.remove();
+                        window.URL.revokeObjectURL(url);
+                        msgEl.textContent = "✅ 导出成功！";
+                        msgEl.style.color = "#2e7d32";
+                    })
+                    .catch(err => {
+                        msgEl.textContent = "❌ " + err.message;
+                        msgEl.style.color = "#d32f2f";
+                    });
             };
             
             window.switchTab = function(tabIndex) {
@@ -841,6 +922,51 @@ class JsGenerator:
             // 启动时初始化数据源状态并定时轮询防掉线
             setTimeout(window.updateLofSourceBadge, 1000);
             setInterval(window.updateLofSourceBadge, 10000);
+
+            // 🌟 [终极兜底] 每 3 秒强制轮询富途和 IB，彻底解决断流和白屏问题
+            setInterval(function() {
+                var isFutu = document.getElementById('source-futu') && document.getElementById('source-futu').checked;
+                if (isFutu) {
+                    fetch('/api/futu_prices').then(res => res.json()).then(data => {
+                        if (data.status === 'success' && data.prices) {
+                            window.latestFutuPrices = window.latestFutuPrices || {};
+                            Object.assign(window.latestFutuPrices, data.prices);
+                            var hasValid = false;
+                            Object.keys(data.prices).forEach(function(sym) {
+                                var el = document.getElementById('futu-val-' + sym.toLowerCase());
+                                if (el && data.prices[sym] && data.prices[sym].bid) {
+                                    hasValid = true;
+                                    var newPrice = data.prices[sym].bid.toFixed(2);
+                                    if (el.textContent !== newPrice) {
+                                        el.textContent = newPrice;
+                                        el.style.color = '#2e7d32'; // 富途专属绿色闪烁
+                                    }
+                                }
+                            });
+                            if (hasValid) {
+                                var statusEl = document.getElementById('ib-status-text');
+                                if (statusEl) {
+                                    statusEl.textContent = '富途夜盘数据已连通更新';
+                                    statusEl.style.backgroundColor = '#2e7d32';
+                                }
+                            }
+                            window.calculateRealTimeValues();
+                        }
+                    }).catch(e => console.log('Futu fetch error:', e));
+                }
+                
+                var isIb = document.getElementById('source-ib') && document.getElementById('source-ib').checked;
+                if (isIb) {
+                    fetch('/api/ib_prices').then(res => res.json()).then(data => {
+                        if (data.status === 'success' && data.prices) {
+                            window.latestIbPrices = window.latestIbPrices || {};
+                            Object.assign(window.latestIbPrices, data.prices);
+                            updateIbDomPrices(data.prices);
+                            window.calculateRealTimeValues();
+                        }
+                    }).catch(e => console.log('IB fetch error:', e));
+                }
+            }, 3000);
         </script>
         '''
 

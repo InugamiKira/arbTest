@@ -25,23 +25,8 @@ taskkill /f /im python.exe > nul 2>&1
 
 set PYTHONIOENCODING=utf-8
 
-echo [0/6] Running daily data update (011)...
-"%PY%" -X utf8 LOF011_daily_updater.py
-if errorlevel 1 (
-    echo [Error] 011 failed!
-    pause > nul
-    exit /b 1
-)
-echo 011 completed.
-
-echo [1/6] Running static valuation (012)...
-"%PY%" -X utf8 LOF012_calculate_static_valuation.py
-if errorlevel 1 (
-    echo [Error] 012 failed!
-    pause > nul
-    exit /b 1
-)
-echo 012 completed.
+echo [0/6] Skipping manual 011 update (handled intelligently by LOF03)...
+echo [1/6] Skipping manual 012 static valuation (handled intelligently by LOF03)...
 
 echo [2/6] Starting admin panel (port 5002)...
 start "LOF Admin (5002)" /D "%ROOT%" cmd /k ""%PY%" -X utf8 LOF01_admin_launcher.py"

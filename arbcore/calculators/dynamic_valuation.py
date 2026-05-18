@@ -13,30 +13,61 @@ class DynamicValuationCalculator:
         # 缓存 T-1 基准数据，避免盘中高频调用时反复查库卡死 IO
         self._base_data_cache = {}
         
+    
     def _get_base_data(self, fund_code):
-        """获取 T-1 完美基准数据 (带内存缓存)"""
+        """获取 T-1 完美基准数据 (从大一统关系表联表查询)"""
         if fund_code in self._base_data_cache:
             return self._base_data_cache[fund_code]
-            
+
         conn = self.db._get_conn()
         try:
-            # 寻找最新有净值和汇率的一天作为推演基石
-            query = f"""
-                SELECT * FROM fund_history_{fund_code} 
-                WHERE nav IS NOT NULL AND nav > 0 AND exchange_rate IS NOT NULL AND exchange_rate > 0
-                ORDER BY date DESC LIMIT 1
+            # 寻找最新有净值和汇率的一天作为推演基石 (联表查询：净值 + 因子 + 汇率)
+            query = """
+                SELECT 
+                    a.date, a.nav, a.price as close, 
+                    c.usd_cny_mid as exchange_rate,
+                    b.position, b.calibration, b.hedge
+                FROM fund_data a
+                JOIN fund_daily_factors b ON a.date = b.date AND a.fund_code = b.fund_code
+                JOIN exchange_rate c ON a.date = c.date
+                WHERE a.fund_code = ? AND a.nav IS NOT NULL AND a.nav > 0
+                ORDER BY a.date DESC LIMIT 1
             """
-            df = pd.read_sql(query, conn)
+            import pandas as pd
+            df = pd.read_sql(query, conn, params=(fund_code,))
+            
             if not df.empty:
                 base_row = df.iloc[0].to_dict()
+                
+                # 补充底层 ETF 的基准价格 (从 usa_etf_daily_prices 抓取该日期的所有持仓价格)
+                base_date = base_row['date']
+                etf_query = "SELECT symbol, price FROM usa_etf_daily_prices WHERE date = ?"
+                etf_df = pd.read_sql(etf_query, conn, params=(base_date,))
+                for _, row in etf_df.iterrows():
+                    base_row[row['symbol']] = row['price']
+                    base_row[row['symbol'].replace('^', '')] = row['price']
+                
+                # 补充期货结算价
+                fut_query = "SELECT symbol, settle_price FROM futures_daily WHERE date = ?"
+                fut_df = pd.read_sql(fut_query, conn, params=(base_date,))
+                if not fut_df.empty:
+                    # 兼容旧代码对 '期货结算价' 字段的依赖
+                    for _, row in fut_df.iterrows():
+                        base_row[f"{row['symbol']}_settle"] = row['settle_price']
+                    # 简单取第一个作为通用结算价列 (适配旧逻辑)
+                    base_row['期货结算价'] = fut_df.iloc[0]['settle_price']
+
                 self._base_data_cache[fund_code] = base_row
                 return base_row
             return None
         except Exception as e:
-            logger.error(f"获取 {fund_code} 基准数据失败: {e}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"获取 {fund_code} 关系型基准数据失败: {e}")
             return None
         finally:
             conn.close()
+
 
     def refresh_cache(self):
         """每日 012 静态计算完毕后调用此方法，释放并刷新 T-1 缓存"""
@@ -69,10 +100,10 @@ class DynamicValuationCalculator:
                 position = pf if pf <= 1 else pf / 100.0
             except:
                 pos_val = fund_config.get('holdings', {}).get('equity_ratio', 100.0)
-                position = (pos_val / 100.0) if pos_val > 1 else pos_val
+                position = (pos_val / 100.0) if pos_val > 2 else pos_val
         else:
             pos_val = fund_config.get('holdings', {}).get('equity_ratio', 100.0)
-            position = (pos_val / 100.0) if pos_val > 1 else pos_val
+            position = (pos_val / 100.0) if pos_val > 2 else pos_val
             
         fx_change = current_fx / b_fx if current_fx > 0 else 1.0
         

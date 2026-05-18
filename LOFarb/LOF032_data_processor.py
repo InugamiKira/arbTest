@@ -58,7 +58,9 @@ class DataProcessor:
                     price as close, 
                     static_val as static_valuation, 
                     static_premium as premium,
-                    val_error
+                    val_error,
+                    position,
+                    calibration
                 FROM fund_data 
                 WHERE fund_code = '{fund_code}'
                 ORDER BY date DESC
@@ -68,9 +70,8 @@ class DataProcessor:
             
             if not df.empty:
                 df = self._normalize_date_column(df, 'date')
-                # 过滤掉日期为空的行
-                df = df[df['date'].notna()]
-                return df.reset_index(drop=True)
+                # 移除过滤逻辑，允许日期存在但nav为空的情况
+                return df.sort_values('date', ascending=False).reset_index(drop=True)
             
         except Exception as e:
             print(f"❌ [DataProcessor] 读取基金 {fund_code} 历史数据失败: {e}")

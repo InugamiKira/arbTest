@@ -43,32 +43,40 @@ silver_fund_data = None
 
 def read_fund_history_from_db(code):
     """
-    【重构：大一统版本】直接从核心宽表 fund_data 读取基金的所有历史记录
+    【重构：大一统版本】直接从核心宽表 fund_data 读取基金的历史记录，
+    并自动关联 exchange_rate 和 usa_etf_daily_prices 基础数据表。
     """
     try:
-        conn = sqlite3.connect(SHARED_DB_PATH)
-        # 从 fund_data 提取该基金的数据，并进行字段映射以适配原有逻辑
-        sql = f"""
-            SELECT 
-                date, 
-                nav, 
-                price as close, 
-                static_val as static_valuation, 
-                static_premium as premium,
-                val_error
-            FROM fund_data 
-            WHERE fund_code = '{code}'
-            ORDER BY date DESC
-        """
-        df = pd.read_sql(sql, conn)
-        conn.close()
-        if not df.empty and 'date' in df.columns:
-            df['date'] = pd.to_datetime(df['date'])
-            # 自动去重
-            df = df.drop_duplicates(subset=['date']).reset_index(drop=True)
-        return df
+        # 1. 使用 DataProcessor 获取基金核心数据
+        processor = DataProcessor(DATA_DIR)
+        fund_df = processor.read_lof_data(code)
+        if fund_df.empty:
+            return fund_df
+            
+        # 2. 获取全局基础数据 (汇率, ETF价格, 期货等)
+        basic_df = processor.read_basic_data()
+        if basic_df.empty:
+            return fund_df
+            
+        # 3. 映射 basic_df 列名以兼容旧逻辑
+        # 旧逻辑期望 exchange_rate, 而 read_basic_data 返回 "人民币中间价"
+        if "人民币中间价" in basic_df.columns:
+            basic_df = basic_df.rename(columns={"人民币中间价": "exchange_rate"})
+            
+        # 4. 执行左连接合并
+        merged_df = pd.merge(fund_df, basic_df, on="date", how="left")
+        
+        # 5. 自动去重并按日期排序
+        if not merged_df.empty:
+            merged_df["date"] = pd.to_datetime(merged_df["date"])
+            merged_df = merged_df.drop_duplicates(subset=["date"]).sort_values("date", ascending=False).reset_index(drop=True)
+            
+        return merged_df
+        
     except Exception as e:
-        print(f"❌ 读取 fund_data 表中基金 {code} 的数据失败: {e}")
+        print(f"❌ [重构版] 读取基金 {code} 的复合历史数据失败: {e}")
+        import traceback
+        traceback.print_exc()
         return pd.DataFrame()
 
 def get_exchange_rate():
@@ -133,7 +141,7 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
     try:
         raw_pos = hold_cfg.get('equity_ratio', 100.0)
         pos_val = float(str(raw_pos).replace('%', ''))
-        pos_float = pos_val / 100.0 if pos_val > 1 else pos_val
+        pos_float = pos_val / 100.0 if pos_val > 2 else pos_val
     except Exception:
         pos_float = 1.0
     
@@ -150,25 +158,19 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
     # 从数据库读取基金完美对账表
     lof_df = read_fund_history_from_db(code)
     
-    # 如果没有数据，直接跳过
     if lof_df.empty:
         print(f"警告: 基金 {code} 无数据，跳过处理")
         return None, None, None
         
     # === 核心修复：动态提取基准日 (T-1) 的真实仓位和权重，彻底覆盖 YAML 默认值 ===
-    base_row = None
-    for _, row in lof_df.sort_values('date', ascending=False).iterrows():
-        nav_val = row.get('nav', 0)
-        if pd.notna(nav_val) and nav_val and float(nav_val) > 0:
-            base_row = row
-            break
+    _, _, base_row = data_processor.get_base_date_info(lof_df)
             
     if base_row is not None:
         db_pos = base_row.get('position', base_row.get('仓位'))
         if pd.notna(db_pos) and db_pos != '无' and db_pos != '':
             try:
                 pf = float(db_pos)
-                if pf > 1: pf = pf / 100.0
+                if pf > 2: pf = pf / 100.0
                 if pf > 0: pos_float = pf
             except: pass
             
@@ -1001,48 +1003,44 @@ def generate_fund_data(fund, data_processor, html_generator, futures_data, futur
         base_etfs_text = ""
         base_future_price = 0.0
         
-        for _, row in lof_df_sorted.iterrows():
-            nav_val = row.get('nav', 0)
-            if pd.notna(nav_val) and nav_val is not None:
-                try:
-                    if float(nav_val) > 0:
-                        rt_base_date_str = row['date'].strftime('%Y-%m-%d')
-                        rt_base_nav = float(nav_val)
-                        rt_base_fx = row.get('exchange_rate')
-                        if pd.isna(rt_base_fx):
-                            rt_base_fx = None
-                        else:
-                            rt_base_fx = float(rt_base_fx)
-                        etf_texts = []
-                        for item in h_list:
-                            sym = item['symbol']
-                            val = row.get(sym, 0)
-                            weight_col = f"{sym}权重"
-                            weight = row.get(weight_col, 0.0)
-                            if pd.isna(weight):
-                                weight = 0.0
-                            weight = float(weight)
-                            if pd.notna(val) and val is not None and val != '无' and val != '':
-                                try:
-                                    val_float = float(val)
-                                    if val_float > 0:
-                                        if weight > 0:
-                                            etf_texts.append(f"{sym}: {val_float:.2f} 权重 {weight:.1f}%")
-                                        else:
-                                            etf_texts.append(f"{sym}: {val_float:.2f}")
-                                except:
-                                    pass
-                        base_etfs_text = " | ".join(etf_texts)
-                        
-                        # 新增：提取期货基准价供 Sandbox 验算使用
-                        if future_symbol and '期货结算价' in row:
-                            val = row.get('期货结算价')
-                            if pd.notna(val) and val != '无' and val != '':
-                                base_future_price = float(val)
-                                
-                        break
-                except (ValueError, TypeError):
-                    pass
+        if base_row is not None:
+            row = base_row # 使用已找到的基准行
+            try:
+                rt_base_date_str = row['date'].strftime('%Y-%m-%d')
+                rt_base_nav = float(row['nav'])
+                rt_base_fx = row.get('exchange_rate')
+                if pd.isna(rt_base_fx):
+                    rt_base_fx = None
+                else:
+                    rt_base_fx = float(rt_base_fx)
+                etf_texts = []
+                for item in h_list:
+                    sym = item['symbol']
+                    val = row.get(sym, 0)
+                    weight_col = f"{sym}权重"
+                    weight = row.get(weight_col, 0.0)
+                    if pd.isna(weight):
+                        weight = 0.0
+                    weight = float(weight)
+                    if pd.notna(val) and val is not None and val != '无' and val != '':
+                        try:
+                            val_float = float(val)
+                            if val_float > 0:
+                                if weight > 0:
+                                    etf_texts.append(f"{sym}: {val_float:.2f} 权重 {weight:.1f}%")
+                                else:
+                                    etf_texts.append(f"{sym}: {val_float:.2f}")
+                        except:
+                            pass
+                base_etfs_text = " | ".join(etf_texts)
+                
+                # 新增：提取期货基准价供 Sandbox 验算使用
+                if future_symbol and '期货结算价' in row:
+                    val = row.get('期货结算价')
+                    if pd.notna(val) and val != '无' and val != '':
+                        base_future_price = float(val)
+            except (ValueError, TypeError):
+                pass
                 
         if not base_etfs_text:
             base_etfs_text = "无数据"
@@ -1713,10 +1711,11 @@ def generate(futures_data=None, ib_data=None):
 
         if base_date and base_nav:
             position = fund.get('holdings', {}).get('equity_ratio', 100.0) / 100.0
-            if position > 1: position = position / 100.0 # 兼容 95 和 0.95 两种写法
+            if position > 2: position = position / 100.0 # 兼容 95 和 0.95 两种写法
             # 兼容新旧版配置：优先使用 valuation_portfolio，若无则回退到 hedging_portfolio
             hedging_portfolio = fund.get('valuation_portfolio', [])
-            hedging_portfolio = fund.get('valuation_portfolio', [])
+            if not hedging_portfolio:
+                hedging_portfolio = fund.get('hedging_portfolio', [])
             
             # 在这里同样标准化注入的符号
             for item in hedging_portfolio:
@@ -1729,7 +1728,7 @@ def generate(futures_data=None, ib_data=None):
             if pd.notna(db_pos) and db_pos != '无' and db_pos != '':
                 try:
                     pf = float(db_pos)
-                    if pf > 1: pf = pf / 100.0
+                    if pf > 2: pf = pf / 100.0
                     if pf > 0: position = pf
                 except: pass
 
@@ -1951,6 +1950,7 @@ def generate(futures_data=None, ib_data=None):
 
     # 从独立的模块生成前端巨量的 JavaScript 与 Admin 面板交互逻辑
     js_code = JsGenerator.generate_js_code(active_etfs, js_fund_base_data, gold_calibration, oil_calibration)
+    
     admin_js = JsGenerator.generate_admin_js()
     
     # 添加更多Debug信息
@@ -2015,8 +2015,13 @@ def generate(futures_data=None, ib_data=None):
     prev_tds = ''.join([f'<td id="prev-val-{sym.lower()}" style="font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{get_prev_close(sym)}</td>' for sym in active_etfs])
     # 注意：字典获取 bid 的写法兼容字典或嵌套对象
     ib_tds = ''.join([f'<td id="ib-val-{sym.lower()}" style="font-weight:bold;color:#1976d2; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">{f"{ib_night_prices.get(sym, {}).get(chr(98)+chr(105)+chr(100), 0):.2f}" if ib_night_prices.get(sym) else "-"}</td>' for sym in active_etfs])
-    futu_tds = ''.join([f'<td id="futu-val-{sym.lower()}" style="font-weight:bold;color:#2e7d32; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">-</td>' for sym in active_etfs])
-    manual_tds = ''.join([f'<td style="padding:2px 4px;"><input type="number" id="{sym.lower()}-price" step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>' for sym in active_etfs])
+    futu_tds = ''.join([f'<td id="futu-val-{sym.lower()}" style="font-weight:bold;color:#2e7d32; font-family: var(--font-mono); padding:2px 4px; font-size: 13px;">-</td>' for sym in active_etfs])    
+    manual_tds_list = []
+    for sym in active_etfs:
+        prev_close_val = get_prev_close(sym)
+        value_attr = f'value="{prev_close_val}"' if prev_close_val != '-' else ''
+        manual_tds_list.append(f'<td style="padding:2px 4px;"><input type="number" id="{sym.lower()}-price" {value_attr} step="0.01" style="width: 64px; padding: 2px; font-size: 12px; font-family: var(--font-mono); font-weight:bold; text-align:center; border:1px solid #ccc; border-radius:2px; outline: none; color:#e65100; background-color:#fff3e0;" oninput="document.getElementById(\'source-manual\').checked=true; window.calculateRealTimeValues()"></td>')
+    manual_tds = "".join(manual_tds_list)
         
     final_html += '        <div id="page-home" class="page-section active" style="margin-top: 0px; padding:0; background:transparent; box-shadow:none;">\n'
     # === 第二排：页头 + ABC控制面板 + IB夜盘数据 同排并列 ===
@@ -2053,9 +2058,9 @@ def generate(futures_data=None, ib_data=None):
     final_html += '                            <tr style="border-bottom: 1px dashed #dee2e6; color: #6c757d; background-color: #fdfdfe; height: 24px;">\n'
     final_html += '                                <td style="padding: 2px 4px; text-align: left; font-weight: bold; border-right: 1px dashed #dee2e6; font-size: 12px;">昨收(SMART)</td>\n'
     final_html += f'                                {prev_tds}\n'
-    final_html += f'                                <td rowspan="4" style="border-left: 1px solid #dee2e6; vertical-align: middle; background-color: #fff; padding: 2px;">\n'
-    final_html += f'                                    <div id="active-source-badge" style="font-size: 10px; padding: 2px; border-radius: 2px; font-weight: bold; margin: 0 auto 2px; width: 70px; text-align: center; white-space: nowrap;"></div>\n'
-    final_html += f'                                    <div id="ib-status-text" style="font-size: 10px; padding: 2px; border-radius: 2px; background-color: {ib_status_color}; color: white; max-width: 75px; margin: 0 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;" title="{ib_status_message}">{ib_status_message}</div>\n'
+    final_html += f'                                <td rowspan="4" style="border-left: 1px solid #dee2e6; vertical-align: middle; background-color: #fff; padding: 2px; width: 85px;">\n'
+    final_html += f'                                    <div id="active-source-badge" style="font-size: 10px; padding: 2px; border-radius: 2px; font-weight: bold; margin: 0 auto 2px; width: 75px; text-align: center; white-space: nowrap;"></div>\n'
+    final_html += f'                                    <div id="ib-status-text" style="font-size: 10px; padding: 2px; border-radius: 2px; background-color: {ib_status_color}; color: white; margin: 0 auto; text-align: center; min-height: 28px; display: flex; align-items: center; justify-content: center; width: 75px;" title="{ib_status_message}">{ib_status_message}</div>\n'
     final_html += '                                </td>\n'
     final_html += '                            </tr>\n'
     final_html += '                            <!-- IB夜盘 -->\n'
@@ -2070,8 +2075,8 @@ def generate(futures_data=None, ib_data=None):
     final_html += '                            <!-- 富途夜盘 -->\n'
     final_html += '                            <tr style="border-bottom: 1px dashed #dee2e6; background-color: #f8fbff; height: 24px;">\n'
     final_html += '                                <td style="padding: 2px 4px; text-align: left; border-right: 1px dashed #dee2e6;">\n'
-    final_html += '                                    <label style="cursor: pointer; display: flex; align-items: center; gap: 2px; font-weight: bold; color: #0d47a1; margin: 0; font-size: 11px; white-space: nowrap;">\n'
-    final_html += '                                        <input type="radio" name="calc_source" id="source-futu" value="futu" {"checked" if not has_ib_data else ""} onchange="window.calculateRealTimeValues()" style="margin: 0; transform: scale(0.7);"> 富途夜盘(买一)\n'
+    final_html += '                                    <label style="cursor: pointer; display: flex; align-items: center; gap: 2px; font-weight: bold; color: #2e7d32; margin: 0; font-size: 11px; white-space: nowrap;">\n'
+    final_html += f'                                        <input type="radio" name="calc_source" id="source-futu" value="futu" {"checked" if not has_ib_data and has_futu_data else ""} onchange="window.calculateRealTimeValues()" style="margin: 0; transform: scale(0.7);"> 富途夜盘(买一)\n'
     final_html += '                                    </label>\n'
     final_html += '                                </td>\n'
     final_html += f'                                {futu_tds}\n'

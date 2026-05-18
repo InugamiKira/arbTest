@@ -3,7 +3,7 @@ import time
 import sqlite3
 import threading
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
 logging.basicConfig(level=logging.INFO)
@@ -27,16 +27,16 @@ class DatabaseManager:
         
     def _get_conn(self):
         try:
-            logger.info(f"Attempting to connect to database: {self.db_path}")
-            logger.info(f"Database directory exists: {os.path.exists(os.path.dirname(self.db_path))}")
+            logger.debug(f"Attempting to connect to database: {self.db_path}")
+            logger.debug(f"Database directory exists: {os.path.exists(os.path.dirname(self.db_path))}")
             if os.path.exists(self.db_path):
-                logger.info(f"Database file size: {os.path.getsize(self.db_path)} bytes")
+                logger.debug(f"Database file size: {os.path.getsize(self.db_path)} bytes")
             
             conn = sqlite3.connect(self.db_path, timeout=15.0)
             
             try:
                 conn.execute('PRAGMA journal_mode=WAL;')
-                logger.info("WAL mode enabled successfully")
+                logger.debug("WAL mode enabled successfully")
             except Exception as wal_error:
                 logger.warning(f"Failed to enable WAL mode: {wal_error}. Falling back to default journal mode.")
             
@@ -649,12 +649,15 @@ class DatabaseManager:
         with self.lock:
             try:
                 conn = self._get_conn()
-                cutoff_date = (datetime.now() - pd.Timedelta(days=days)).strftime('%Y-%m-%d')
+                cutoff_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
                 
                 conn.execute('DELETE FROM futures_daily WHERE date < ?', (cutoff_date,))
                 conn.execute('DELETE FROM usa_etf_daily_prices WHERE date < ?', (cutoff_date,))
                 conn.execute('DELETE FROM fund_data WHERE date < ?', (cutoff_date,))
                 conn.execute('DELETE FROM system_health WHERE timestamp < ?', (cutoff_date,))
+                # [优化] 清理 7 天前的访问同步记录，防止 access_sync_status 无限膨胀
+                sync_cutoff = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+                conn.execute('DELETE FROM access_sync_status WHERE sync_date < ?', (sync_cutoff,))
                 
                 conn.commit()
                 conn.close()
@@ -662,6 +665,34 @@ class DatabaseManager:
             except Exception as e:
                 logger.error(f"清理旧数据失败: {e}")
                 
+
+    def drop_deprecated_tables(self):
+        """
+        [重构专属] 彻底删除旧版遗留的 fund_history_xxxx 碎片表
+        """
+        with self.lock:
+            try:
+                conn = self._get_conn()
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'fund_history_%'")
+                old_tables = [row[0] for row in cursor.fetchall()]
+                if old_tables:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"🧹 发现 {len(old_tables)} 个旧版碎片表，正在执行物理删除...")
+                    for table in old_tables:
+                        cursor.execute(f"DROP TABLE IF EXISTS {table}")
+                    conn.commit()
+                    logger.info("✅ 旧版碎片表已全部清除。")
+                else:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info("✨ 数据库很干净，未发现旧版碎片表。")
+                conn.close()
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"清理旧表失败: {e}")
     def vacuum_database(self):
         """优化 SQLite 数据库空间"""
         try:

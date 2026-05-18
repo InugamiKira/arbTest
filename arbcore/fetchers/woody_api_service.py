@@ -131,7 +131,7 @@ class WoodyAPIService:
                 raw_date = f_data.get('date', '')
                 b_date = pd.to_datetime(str(raw_date).strip()).strftime('%Y-%m-%d') if raw_date else today_str
                 pos = f_data.get('position')
-                pos = float(pos)/100.0 if pos and float(pos) > 1 else (float(pos) if pos else 1.0)
+                pos = float(pos)/100.0 if pos and float(pos) > 2 else (float(pos) if pos else 1.0)
                 cal = float(f_data['calibration']) if 'calibration' in f_data else None
                 hed = float(f_data['hedge']) if 'hedge' in f_data else None
                 nav_val = float(f_data['netvalue']) if f_data.get('netvalue') else None
@@ -147,7 +147,7 @@ class WoodyAPIService:
                         ratio = float(etf_info.get('ratio', 0))
                         
                         if price > 0 and clean_etf.startswith('^'): db.upsert_usa_etf_price(date=b_date, symbol=clean_etf, price=price)
-                        if ratio > 0: db.upsert_fund_basket_weight(date=b_date, fund_code=fund_code, underlying_symbol=clean_etf, weight=ratio)
+                        if ratio != 0: db.upsert_fund_basket_weight(date=b_date, fund_code=fund_code, underlying_symbol=clean_etf, weight=ratio)
 
         db.mark_access_synced(today_str, sync_key)
         logger.info(f"✅ [{source_id}] 因子提纯入库与双备份完毕！")

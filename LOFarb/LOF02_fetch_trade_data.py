@@ -42,6 +42,16 @@ from ibapi.wrapper import EWrapper
 from ibapi.contract import Contract
 from ibapi.order import Order
 
+# ====== [动态修复] IB API 核心底层崩溃拦截 ======
+# 修复未启动 TWS/Gateway 时，后台轮询线程调用 reqMktData 引发的 TypeError 崩溃
+_original_reqMktData = EClient.reqMktData
+def _safe_reqMktData(self, reqId, contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions):
+    if not self.isConnected() or self.serverVersion() is None:
+        return  # 拦截未连接时的请求，避免抛出 TypeError: '<=' not supported between instances of 'int' and 'NoneType'
+    return _original_reqMktData(self, reqId, contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions)
+EClient.reqMktData = _safe_reqMktData
+# ===============================================
+
 # 尝试导入富途API
 try:
     from futu import OpenQuoteContext, SubType, Session
@@ -290,7 +300,7 @@ class FutuReader:
             # 限制重连频率，避免富途OpenD未启动时狂刷错误
             if self.ctx is None:
                 if time.time() - self.last_connect_time < 60:
-                    return False, "富途OpenD未连接 (等待重连...)", self.prices
+                    return False, "富途API未运行 (等待重连...)", self.prices
                 self.last_connect_time = time.time()
                 
                 # 静音富途底层日志
@@ -310,7 +320,8 @@ class FutuReader:
                 ret, data = self.ctx.subscribe(new_codes, [SubType.QUOTE], session=Session.ALL)
                 if ret != 0:
                     self.close()  # 必须关闭失效的上下文，否则底层线程会无限重连导致控制台刷屏
-                    return False, f"订阅失败: {data}", self.prices
+                    print(f"⚠️ [行情告警] 富途API未运行或拒绝连接: {data}")
+                    return False, f"富途API未运行 (订阅失败): {data}", self.prices
                 self.subscribed_codes.update(new_codes)
             
             ret, data = self.ctx.get_stock_quote(futu_codes)
@@ -366,11 +377,16 @@ class FutuReader:
                 return True, "成功获取富途夜盘价格", self.prices
             else:
                 self.close()  # 接口返回错误时立即销毁上下文，切断底层的死亡重连循环
-                return False, f"获取数据失败: {data}", self.prices
+                print(f"⚠️ [行情告警] 富途API未运行或获取数据失败: {data}")
+                return False, f"富途API未运行: {data}", self.prices
                 
         except Exception as e:
             self.close()
-            return False, f"富途接口异常: {str(e)}", self.prices
+            err_msg = str(e)
+            if "refused" in err_msg.lower() or "10061" in err_msg:
+                print("⚠️ [行情告警] 无法连接到OpenD，富途API未运行！")
+                return False, "富途API未运行 (连接被拒绝)", self.prices
+            return False, f"富途接口异常: {err_msg}", self.prices
 
 futu_reader = FutuReader()
 atexit.register(futu_reader.close)
@@ -979,8 +995,8 @@ class LOFPriceReader:
                     self._last_sina_time = current_time
                     
                 # 引擎休眠控制（银河QMT和通达信不需要休眠，实时推送或本地读取）
-                if self.use_qmt: time.sleep(1)
-                elif self.use_tdx: time.sleep(10)
+                if self.use_qmt: time.sleep(0.05)
+                elif self.use_tdx: time.sleep(1)
                 else: time.sleep(20)
 
             except: pass
@@ -1035,19 +1051,20 @@ future_service = FuturePriceService()
 sse_reader = SSEFuturesReader()
 lof_price_reader = LOFPriceReader()
 
-# 增加：在岸价独立高速缓存与轮询线程 (30秒一次)
-cny_spot_cache = {'rate': None, 'time': None}
-def _poll_spot_rate():
-    while True:
-        try:
-            # 修复：直接调用 core_fetcher，解决之前找不到 fetch_cny_spot_rate 方法导致的假死
-            res = core_fetcher.fetch_cny_spot_rate()
-            if res and '人民币在岸价' in res:
-                cny_spot_cache['rate'] = res['人民币在岸价']
-                cny_spot_cache['time'] = res.get('时间', '')
-        except: pass
-        time.sleep(30)
-threading.Thread(target=_poll_spot_rate, daemon=True).start()
+# 增加：在岸价独立高速缓存与轮询线程 (暂未启用)
+# cny_spot_cache = {'rate': None, 'time': None}
+# def _poll_spot_rate():
+#     while True:
+#         try:
+#             # 修复：直接调用 core_fetcher，解决之前找不到 fetch_cny_spot_rate 方法导致的假死
+#             res = core_fetcher.fetch_cny_spot_rate()
+#             if res and '人民币在岸价' in res:
+#                 cny_spot_cache['rate'] = res['人民币在岸价']
+#                 cny_spot_cache['time'] = res.get('时间', '')
+#                 # socketio.emit('exchange_rate_update', {'spot': cny_spot_cache['rate'], 'time': cny_spot_cache['time']})
+#         except: pass
+#         time.sleep(30)
+# threading.Thread(target=_poll_spot_rate, daemon=True).start()
 
 # WebSocket事件处理
 @socketio.on('connect')
@@ -1245,18 +1262,21 @@ def api_ib_cancel_all():
 @app.route('/api/export_fund/<code>')
 def export_fund_data(code):
     try:
-        import sys
-        if BASE_DIR not in sys.path:
-            sys.path.append(BASE_DIR)
+        secret_file = os.path.join(BASE_DIR, 'LOF005_output.py')
+        if not os.path.exists(secret_file):
+            return jsonify({"status": "error", "message": "该功能为私有开发环境专享，当前版本未包含导出模块"}), 403
+            
         import LOF005_output
+        import importlib
+        importlib.reload(LOF005_output)
         
         root_dir = os.path.dirname(BASE_DIR)
-        success, msg, csv_content = LOF005_output.generate_fund_excel_csv(code, root_dir)
+        success, msg, csv_bytes = LOF005_output.generate_fund_excel_csv(code, root_dir)
         
         if success:
             # utf-8-sig 的 BOM 编码完美解决直接双击 Excel 打开时中文乱码的问题
             return Response(
-                csv_content.encode('utf-8-sig'),
+                csv_bytes,
                 mimetype="text/csv",
                 headers={"Content-disposition": f"attachment; filename=fund_{code}_export.csv"}
             )

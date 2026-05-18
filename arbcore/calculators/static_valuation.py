@@ -149,10 +149,10 @@ class StaticValuationCalculator:
                 
         # 3. 仓位终极兜底转换 (仅在连历史最老一天都没有API数据时才触发)
         default_pos = fund.get('holdings', {}).get('equity_ratio', 100)
-        if default_pos > 1: default_pos = default_pos / 100.0
+        if default_pos > 2: default_pos = default_pos / 100.0
         if '仓位' in df.columns:
             df['仓位'] = df['仓位'].fillna(default_pos)
-            df['仓位'] = df['仓位'].apply(lambda x: x / 100.0 if x > 1 else x)
+            df['仓位'] = df['仓位'].apply(lambda x: x / 100.0 if x > 2 else x)
         
         # 初始化计算列占位符
         df['static_valuation'] = None
@@ -297,7 +297,14 @@ class StaticValuationCalculator:
         table_name = f"fund_history_{fund_code}"
         
         conn = self.db._get_conn()
-        df.to_sql(table_name, conn, if_exists='replace', index=False)
+        cursor = conn.cursor()
+        for _, row in df.iterrows():
+            val = row.get('static_valuation')
+            err_str = row.get('ETF静态估值误差')
+            val_error = float(err_str.strip('%'))/100.0 if isinstance(err_str, str) and '%' in err_str else None
+            if pd.notna(val):
+                cursor.execute('UPDATE fund_data SET static_val = ?, val_error = ? WHERE date = ? AND fund_code = ?', (val, val_error, row['date'], fund_code))
+        conn.commit()
         conn.close()
         
         # 提取最新一天的有效估值用于日志打印

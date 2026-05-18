@@ -119,7 +119,7 @@ def init(ContextInfo):
     t.setDaemon(True)
     t.start()
     
-    ContextInfo.run_time("check_tasks", "1nSecond", "2020-01-01 09:30:00")
+    ContextInfo.run_time("check_tasks", "200ms", "2020-01-01 09:30:00")
 
 def push_ticks():
     global g_context, g_subscribed_stocks
