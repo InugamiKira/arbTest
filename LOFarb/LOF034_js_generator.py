@@ -120,8 +120,8 @@ class JsGenerator:
                 if (hasValidData && isIbSelected) {
                     var statusEl = document.getElementById('ib-status-text');
                     if (statusEl) {
-                        statusEl.textContent = 'IB夜盘数据已连通更新';
-                        statusEl.style.backgroundColor = '#1976d2'; // IB 专属蓝色
+                        statusEl.textContent = '✅ IB夜盘数据已连通更新';
+                        statusEl.style.backgroundColor = '#1976d2';
                     }
                 }
             }
@@ -608,6 +608,21 @@ class JsGenerator:
                 var isFutu = document.getElementById('source-futu') && document.getElementById('source-futu').checked;
                 var isManual = document.getElementById('source-manual') && document.getElementById('source-manual').checked;
         
+                // 🌟 修复切换数据源后指示牌状态不更新的问题
+                var statusEl = document.getElementById('ib-status-text');
+                if (statusEl) {
+                    if (isIb && !statusEl.textContent.includes('IB')) {
+                        statusEl.textContent = 'IB夜盘数据测算中...';
+                        statusEl.style.backgroundColor = '#1976d2';
+                    } else if (isFutu && !statusEl.textContent.includes('富途')) {
+                        statusEl.textContent = '富途夜盘数据测算中...';
+                        statusEl.style.backgroundColor = '#2e7d32';
+                    } else if (isManual && !statusEl.textContent.includes('手工')) {
+                        statusEl.textContent = '手工参数测算中';
+                        statusEl.style.backgroundColor = '#f57c00';
+                    }
+                }
+
                 window.currentEtfPrices = {};
                 window.activeEtfs.forEach(function(sym) {
                     var price = 0;
@@ -946,7 +961,7 @@ class JsGenerator:
                             if (hasValid) {
                                 var statusEl = document.getElementById('ib-status-text');
                                 if (statusEl) {
-                                    statusEl.textContent = '富途夜盘数据已连通更新';
+                                    statusEl.textContent = '✅ 富途夜盘数据已连通更新';
                                     statusEl.style.backgroundColor = '#2e7d32';
                                 }
                             }

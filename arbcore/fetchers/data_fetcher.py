@@ -186,8 +186,15 @@ class DataFetcher:
                         rate = record['price']
                         if '美元' in currency_name or 'USD' in currency_name:
                             logger.info(f"国家外汇管理局 - {currency_name}: {rate}")
+                            # 规范化日期格式为 YYYY-MM-DD
+                            raw_date = date_info.split(' ')[0]
+                            try:
+                                dt = datetime.strptime(raw_date, '%Y-%m-%d')
+                                normalized_date = dt.strftime('%Y-%m-%d')
+                            except:
+                                normalized_date = raw_date  # 回退
                             return {
-                                '日期': date_info.split(' ')[0], 
+                                '日期': normalized_date, 
                                 '人民币中间价': float(rate),
                                 '来源': '国家外汇管理局'
                             }
