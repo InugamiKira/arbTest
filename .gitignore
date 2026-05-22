@@ -40,13 +40,13 @@ woodyAPI/
 
 # === 数据库文件（不上传Gitee）===
 database/*
-database/*.db
 database/*.db-shm
 database/*.db-wal
 
 # 只允许上传这两个文件
-!database/arb_master_share
+!database/arb_master_share.db
 !database/readme.txt
+
 
 # === 日志文件 ===
 *.log

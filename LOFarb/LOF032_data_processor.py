@@ -118,6 +118,18 @@ class DataProcessor:
                 else:
                     df = pd.merge(df, etf_pivot, on='date', how='outer')
 
+            # 5. 读取 指数 价格 (如 NDX, IDX 等)
+            try:
+                idx_df = pd.read_sql("SELECT date, symbol, price FROM index_daily", conn)
+                if not idx_df.empty:
+                    idx_pivot = idx_df.pivot(index='date', columns='symbol', values='price').reset_index()
+                    if df.empty:
+                        df = idx_pivot
+                    else:
+                        df = pd.merge(df, idx_pivot, on='date', how='outer')
+            except Exception as e:
+                print(f"读取 index_daily 失败: {e}")
+
             conn.close()
             
             if not df.empty:
@@ -154,3 +166,34 @@ class DataProcessor:
                 return base_date, base_nav, base_row
         
         return None, None, None
+
+    def get_latest_global_params(self):
+        """获取最新全局参数（汇率及所有期货校准值）"""
+        params = {
+            'global_er': 7.0,
+            'calibrations': {}
+        }
+        try:
+            conn = sqlite3.connect(SHARED_DB_PATH)
+            # 1. 获取最新全局汇率
+            er_df = pd.read_sql("SELECT usd_cny_mid FROM exchange_rate ORDER BY date DESC LIMIT 1", conn)
+            if not er_df.empty:
+                params['global_er'] = float(er_df.iloc[0]['usd_cny_mid'])
+            
+            # 2. 获取所有存在校准值的期货的最新值
+            calib_df = pd.read_sql("""
+                SELECT symbol, calibration 
+                FROM futures_daily 
+                WHERE calibration IS NOT NULL 
+                AND date = (SELECT MAX(date) FROM futures_daily f2 WHERE f2.symbol = futures_daily.symbol AND f2.calibration IS NOT NULL)
+            """, conn)
+            
+            for _, row in calib_df.iterrows():
+                sym = row['symbol']
+                cal = row['calibration']
+                if pd.notna(cal):
+                    params['calibrations'][sym] = float(cal)
+            conn.close()
+        except Exception as e:
+            print(f"读取全局参数失败: {e}")
+        return params

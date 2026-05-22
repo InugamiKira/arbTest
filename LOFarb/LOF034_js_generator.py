@@ -4,13 +4,13 @@ class JsGenerator:
     """生成繁杂的前端交互代码，将其从业务逻辑核心中剥离以保持整洁"""
     
     @staticmethod
-    def generate_js_code(active_etfs, js_fund_base_data, gold_calibration, oil_calibration):
+    def generate_js_code(active_etfs, js_fund_base_data, calibrations_dict):
         return r'''
         <script>
             // 注入Python预先计算的基金基准数据，彻底抛弃前端读CSV
             window.activeEtfs = ''' + json.dumps(active_etfs) + r''';
             window.fundBaseData = ''' + json.dumps(js_fund_base_data, ensure_ascii=False) + r''';
-            window.calibData = { "gold": ''' + str(gold_calibration) + r''', "oil": ''' + str(oil_calibration) + r''' };
+            window.calibData = ''' + json.dumps(calibrations_dict) + r''';
 
             // WebSocket连接
             var socket = io();
@@ -28,32 +28,13 @@ class JsGenerator:
             // 接收期货价格更新
             socket.on('futures_price_update', function(data) {
                 console.log('收到期货价格更新:', data);
-                // 更新期货价格显示
-                if (data.symbol === 'GC') {
-                    var gcPriceElement = document.querySelector('#gc-price');
-                    if (gcPriceElement) {
-                        gcPriceElement.textContent = data.price.toFixed(2);
-                    }
-                } else if (data.symbol === 'CL') {
-                    var clPriceElement = document.querySelector('#cl-price');
-                    if (clPriceElement) {
-                        clPriceElement.textContent = data.price.toFixed(2);
-                    }
-                } else if (data.symbol === 'AG0') {
-                    var agPriceElement = document.querySelector('#ag0-price');
-                    if (agPriceElement) {
-                        agPriceElement.textContent = data.price.toFixed(2);
-                    }
-                } else if (data.symbol === 'NQ') {
-                    var nqPriceElement = document.querySelector('#nq-price');
-                    if (nqPriceElement) {
-                        nqPriceElement.textContent = data.price.toFixed(2);
-                    }
-                } else if (data.symbol === 'ES') {
-                    var esPriceElement = document.querySelector('#es-price');
-                    if (esPriceElement) {
-                        esPriceElement.textContent = data.price.toFixed(2);
-                    }
+                // 🌟 动态更新所有匹配 class 的期货价格显示
+                if (data && data.symbol && data.price > 0) {
+                    var className = data.symbol.toLowerCase().replace('ag0', 'ag0') + '-price';
+                    var elements = document.querySelectorAll('.' + className);
+                    elements.forEach(function(el) {
+                        el.textContent = data.price.toFixed(2);
+                    });
                 }
                 
                 // 触发估值计算
@@ -65,36 +46,16 @@ class JsGenerator:
                 console.log('收到期货价格快照:', data);
                 // 更新所有期货价格
                 if (data.prices) {
-                    if (data.prices.GC) {
-                        var gcPriceElement = document.querySelector('#gc-price');
-                        if (gcPriceElement) {
-                            gcPriceElement.textContent = data.prices.GC.toFixed(2);
+                    Object.keys(data.prices).forEach(function(symbol) {
+                        var price = data.prices[symbol];
+                        if (price > 0) {
+                            var className = symbol.toLowerCase().replace('ag0', 'ag0') + '-price';
+                            var elements = document.querySelectorAll('.' + className);
+                            elements.forEach(function(el) {
+                                el.textContent = price.toFixed(2);
+                            });
                         }
-                    }
-                    if (data.prices.CL) {
-                        var clPriceElement = document.querySelector('#cl-price');
-                        if (clPriceElement) {
-                            clPriceElement.textContent = data.prices.CL.toFixed(2);
-                        }
-                    }
-                    if (data.prices.AG) {
-                        var agPriceElement = document.querySelector('#ag0-price');
-                        if (agPriceElement) {
-                            agPriceElement.textContent = data.prices.AG.toFixed(2);
-                        }
-                    }
-                    if (data.prices.NQ) {
-                        var nqPriceElement = document.querySelector('#nq-price');
-                        if (nqPriceElement) {
-                            nqPriceElement.textContent = data.prices.NQ.toFixed(2);
-                        }
-                    }
-                    if (data.prices.ES) {
-                        var esPriceElement = document.querySelector('#es-price');
-                        if (esPriceElement) {
-                            esPriceElement.textContent = data.prices.ES.toFixed(2);
-                        }
-                    }
+                    });
                 }
             });
 
@@ -265,19 +226,25 @@ class JsGenerator:
                     return 0; // 彻底没有有效汇率，强制熔断返回0
                 }
                 
-                // 🌟 魔法公式：使用真实的 Woody Calibration 计算实时估值
-                var calibration = baseData.latestCalibrationFactor;
-                var position = baseData.position;
+                // =========================================================================
+                // 💡 概念澄清与双校准参数隔离 (核心备注)
+                // =========================================================================
+                // 1. woody API 的 `hedge` (在前端为 baseData.hedgeValue):
+                //    - 用途：优先作为“魔法公式”用来计算【纯ETF】和【指数】的估值。
+                //    - 规则：如果没能从 woody API 获得有效的 hedge，则不使用替身推导，估值自动降级使用兜底的【矩阵算法】。
+                //
+                // 2. 期货校准 (在前端为 window.calibData 或 latestCalibrationFactor):
+                //    - 用途：专门用来计算“实时的期货校准估值” (即：实时期货价格 / 期货校准)。
+                //    - 规则：只有【黄金】、【原油】类基金和【指数】类基金才会用到；【纯ETF】没有也不使用期货校准估值。千万不要混淆！
+                // =========================================================================
                 
-                // 如果后端没有传真实的 calibration，则用 hedgeValue 动态推导一个兜底的 calibration
-                if (!calibration || calibration <= 0) {
-                    var hedgeValue = baseData.hedgeValue;
-                    if (!hedgeValue || hedgeValue <= 0) {
-                        hedgeValue = baseData.etfHedgeValue; 
-                    }
-                    if (hedgeValue && hedgeValue > 0 && position > 0) {
-                        calibration = hedgeValue * position;
-                    }
+                var position = baseData.position;
+                var hedgeValue = baseData.hedgeValue; // 严格只取 woody API 真实传入的 hedge
+                var etfCalibration = 0;
+                
+                // 严格遵循要求：只有获取到了真实 hedge，才能启用魔法公式，如果获取不到则保持 0 以便后续降级矩阵算法
+                if (hedgeValue && hedgeValue > 0 && position > 0) {
+                    etfCalibration = hedgeValue * position;
                 }
                 
                 function getCurrentPrice(sym) {
@@ -285,14 +252,17 @@ class JsGenerator:
                     return window.currentEtfPrices[cleanSym] || 0;
                 }
 
-                // 🌟 仅限单一资产(如XOP等纯ETF)使用校准魔法。指数类(SPY/QQQ)由于WoodyAPI返回的校准因子其实是期货的，强制退回降级的传统兜底算法(矩阵)
-                if (category !== '指数' && calibration && calibration > 0 && baseData.hedgingPortfolio.length === 1 && position > 0) {
+                // 🌟 核心估值逻辑分叉：
+                // 1. 对于“指数”和“纯ETF”/“其他”类基金，优先使用“魔法公式”（基于 woody hedge 导出的 etfCalibration）。
+                // 2. 对于“黄金”、“原油”类基金，其估值天然基于底层商品ETF的价格，因此直接使用“矩阵算法”。
+                // 3. 当“魔法公式”所需的 woody hedge 因子缺失时，所有基金都会自动降级（兜底）到“矩阵算法”。
+                if (category !== '黄金' && category !== '原油' && etfCalibration > 0 && baseData.hedgingPortfolio.length === 1 && position > 0) {
                     var primarySym = baseData.hedgingPortfolio[0].symbol;
                     var currentAssetPrice = getCurrentPrice(primarySym);
                     
                     if (currentAssetPrice > 0) {
-                        // 原汁原味的 Woody 公式：实时估值 = 现金底仓 + (仓位 / Calibration) * (ETF实时价 * 实时汇率)
-                        return baseData.baseNav * (1.0 - position) + (position / calibration) * (currentAssetPrice * todayExchangeRate);
+                        // 魔法公式：实时估值 = 现金底仓 + (仓位 / etfCalibration) * (ETF实时价 * 实时汇率)
+                        return baseData.baseNav * (1.0 - position) + (position / etfCalibration) * (currentAssetPrice * todayExchangeRate);
                     }
                 }
                 
@@ -380,10 +350,10 @@ class JsGenerator:
                 // 2. 初始化期货校准估值的价格数据（使用与主面板相同的实时期货价格）
                 var futSym = baseData.futureSymbol;
                 var futPriceEl = null;
-                if (futSym === 'GC') futPriceEl = document.getElementById('gc-price');
-                else if (futSym === 'CL') futPriceEl = document.getElementById('cl-price');
-                else if (futSym === 'NQ') futPriceEl = document.getElementById('nq-price');
-                else if (futSym === 'ES') futPriceEl = document.getElementById('es-price');
+                if (futSym) {
+                    // 主面板期货价格现已使用 class 渲染，需使用 querySelector 获取
+                    futPriceEl = document.querySelector('.' + futSym.toLowerCase().replace('ag0', 'ag0') + '-price');
+                }
                 
                 var futPrice = '';
                 if (futPriceEl) {
@@ -398,10 +368,20 @@ class JsGenerator:
                 }
                 
                 // 设置校准值（使用与主面板相同的校准值）
-                var calib = baseData.category === '黄金' ? window.calibData.gold : window.calibData.oil;
+                var calib = 0;
+                if (window.calibData && baseData.futureSymbol && window.calibData[baseData.futureSymbol]) {
+                    calib = window.calibData[baseData.futureSymbol];
+                } else {
+                    if (baseData.category === '黄金') {
+                        calib = window.calibData.GC || window.calibData.gold || 10.9067;
+                    } else if (baseData.category === '原油') {
+                        calib = window.calibData.CL || window.calibData.oil || 0.8227;
+                    }
+                }
                 var sbFutCalibEl = document.getElementById('sb-fut-calib-' + code);
-                if (sbFutCalibEl && calib > 0) {
-                    sbFutCalibEl.value = calib;
+                if (sbFutCalibEl) {
+                    if (calib > 0) sbFutCalibEl.value = calib;
+                    else { sbFutCalibEl.value = ''; sbFutCalibEl.placeholder = '缺少'; }
                 }
                 
                 // 3. 初始化纯期货估值的价格数据（使用与主面板相同的实时期货价格）
@@ -431,16 +411,18 @@ class JsGenerator:
                 }
                 
                 // 5. 设置交易价格
+                var targetPrice = 0;
                 if (livePriceEl) {
                     var lpText = livePriceEl.textContent;
                     var lpMatch = lpText.match(/[\d.]+/);
                     if (lpMatch) {
+                        targetPrice = parseFloat(lpMatch[0]);
                         var qmtPriceInput = document.getElementById('trade-price-' + code + '-etf');
-                        if (qmtPriceInput) qmtPriceInput.value = parseFloat(lpMatch[0]);
+                        if (qmtPriceInput) qmtPriceInput.value = targetPrice;
                         var futQmtPriceInput = document.getElementById('trade-price-' + code + '-future');
-                        if (futQmtPriceInput) futQmtPriceInput.value = parseFloat(lpMatch[0]);
+                        if (futQmtPriceInput) futQmtPriceInput.value = targetPrice;
                         var pureQmtPriceInput = document.getElementById('trade-price-' + code + '-pure_future');
-                        if (pureQmtPriceInput) pureQmtPriceInput.value = parseFloat(lpMatch[0]);
+                        if (pureQmtPriceInput) pureQmtPriceInput.value = targetPrice;
                     }
                 }
                 
@@ -669,6 +651,40 @@ class JsGenerator:
                             }
                         }
                     }
+                    
+                    // 追加：更新“期货校准估值”的实时溢价
+                    var calibValEl = document.getElementById('rt-calib-val-' + code);
+                    var calibPremEl = document.getElementById('rt-calib-prem-' + code);
+                    var calibLightEl = document.getElementById('rt-calib-light-' + code);
+                    if (calibValEl && calibPremEl) {
+                        var cVal = parseFloat(calibValEl.textContent);
+                        if (cVal > 0) {
+                            var cPrem = (lofPrice / cVal - 1) * 100;
+                            calibPremEl.textContent = (cPrem > 0 ? '+' : '') + cPrem.toFixed(2) + '%';
+                            calibPremEl.className = 'num-font ' + (cPrem > 0 ? 'premium-positive' : 'premium-negative');
+                            calibPremEl.style.color = cPrem > 0 ? '#d32f2f' : '#388e3c';
+                            if (calibLightEl) {
+                                calibLightEl.innerHTML = cPrem <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                            }
+                        }
+                    }
+
+                    // 追加：更新“纯期货估值”的实时溢价
+                    var exactValEl = document.getElementById('rt-exact-val-' + code);
+                    var exactPremEl = document.getElementById('rt-exact-prem-' + code);
+                    var exactLightEl = document.getElementById('rt-exact-light-' + code);
+                    if (exactValEl && exactPremEl) {
+                        var eVal = parseFloat(exactValEl.textContent);
+                        if (eVal > 0) {
+                            var ePrem = (lofPrice / eVal - 1) * 100;
+                            exactPremEl.textContent = (ePrem > 0 ? '+' : '') + ePrem.toFixed(2) + '%';
+                            exactPremEl.className = 'num-font ' + (ePrem > 0 ? 'premium-positive' : 'premium-negative');
+                            exactPremEl.style.color = ePrem > 0 ? '#d32f2f' : '#388e3c';
+                            if (exactLightEl) {
+                                exactLightEl.innerHTML = ePrem <= -0.8 ? '<span class="arb-light arb-light-red" title="存在折价套利空间 (≤-0.8%)"></span>' : '<span class="arb-light arb-light-green" title="无显著折价空间 (>-0.8%)"></span>';
+                            }
+                        }
+                    }
                 });
             };
 
@@ -728,25 +744,73 @@ class JsGenerator:
         
                 var val = 0;
                 if (futPrice > 0 && calib > 0) {
-                    var equivEtf = futPrice / calib;
-                    if (equivEl) equivEl.textContent = equivEtf.toFixed(3);
-                    
-                    var weightedEtfChangeRate = 0;
-                    var validWeight = 0;
-                    baseData.hedgingPortfolio.forEach(function(item) {
-                        var basePrice = baseData.baseEtfPrices[item.symbol];
-                        if (basePrice > 0 && item.weight > 0) {
-                            weightedEtfChangeRate += (equivEtf / basePrice) * item.weight;
-                            validWeight += item.weight;
+                    var reqSpot = (baseData.rateType === 'spot');
+                    var todayExchangeRate = (reqSpot && window.latestExchangeRates && window.latestExchangeRates.spot) ? window.latestExchangeRates.spot : baseData.todayExchangeRate;
+
+                    if (baseData.category === '指数') {
+                        // 指数专用逻辑：期货价格/校准值（此时代表升贴水率，如 1.0028）还原为现货大盘点位
+                        var equivSpot = futPrice / calib;
+                        
+                        // 为了让"期货校准估值"和"ETF实时估值"严格对齐（支持魔法公式），需将现货指数转化为等效的ETF
+                        var equivEtfPrice = 0;
+                        var mainAnchorSymbol = baseData.hedgingPortfolio[0].symbol;
+                        var baseEtfPrice = baseData.baseEtfPrices[mainAnchorSymbol] || 0;
+                        
+                        if (baseData.baseIndexPrice && baseData.baseIndexPrice > 0 && baseEtfPrice > 0) {
+                            equivEtfPrice = equivSpot * (baseEtfPrice / baseData.baseIndexPrice);
+                        } else if (baseData.baseFuturePrice > 0 && baseData.latestCalibrationFactor > 0 && baseEtfPrice > 0) {
+                            var derivedBaseIndexPrice = baseData.baseFuturePrice / baseData.latestCalibrationFactor;
+                            equivEtfPrice = equivSpot * (baseEtfPrice / derivedBaseIndexPrice);
                         }
-                    });
-                    
-                    if (validWeight > 0) {
-                        if (validWeight < 0.98 || validWeight > 1.02) {
-                            weightedEtfChangeRate = weightedEtfChangeRate / validWeight;
+                        
+                        if (equivEl) equivEl.textContent = equivEtfPrice > 0 ? equivEtfPrice.toFixed(3) : equivSpot.toFixed(2);
+                        
+                        var position = baseData.position;
+                        var hedgeValue = baseData.hedgeValue;
+                        var etfCalibration = (hedgeValue && hedgeValue > 0 && position > 0) ? hedgeValue * position : 0;
+                        
+                        if (etfCalibration > 0 && equivEtfPrice > 0) {
+                            val = baseData.baseNav * (1.0 - position) + (position / etfCalibration) * (equivEtfPrice * todayExchangeRate);
+                        } else {
+                            if (baseData.baseIndexPrice && baseData.baseIndexPrice > 0) {
+                                var spotChangeRate = equivSpot / baseData.baseIndexPrice;
+                                var exchangeRateChange = todayExchangeRate / baseData.baseExchangeRate;
+                                val = baseData.baseNav * (1 + baseData.position * (spotChangeRate * exchangeRateChange - 1));
+                            } else if (baseData.baseFuturePrice > 0 && baseData.latestCalibrationFactor > 0) {
+                                var derivedBaseIndexPrice = baseData.baseFuturePrice / baseData.latestCalibrationFactor;
+                                var spotChangeRate = equivSpot / derivedBaseIndexPrice;
+                                var exchangeRateChange = todayExchangeRate / baseData.baseExchangeRate;
+                                val = baseData.baseNav * (1 + baseData.position * (spotChangeRate * exchangeRateChange - 1));
+                            }
                         }
-                        var exchangeRateChange = baseData.todayExchangeRate / baseData.baseExchangeRate;
-                        val = baseData.baseNav * (1 + baseData.position * (weightedEtfChangeRate * exchangeRateChange - 1));
+                    } else {
+                        // 商品类基金（黄金/原油）的校准估值：强制锚定单一核心资产(GLD/USO)
+                        var equivEtfPrice = futPrice / calib;
+                        if (equivEl) equivEl.textContent = equivEtfPrice.toFixed(3);
+                        var mainAnchorSymbol = (baseData.category === '黄金') ? 'GLD' : 'USO';
+                        var mainAnchorBasePrice = 0;
+
+                        // 寻找主锚点在投资组合中的各种变体（如GLD, ^GLD, ^GLD-EU）并取其基准价
+                        for (var i = 0; i < baseData.hedgingPortfolio.length; i++) {
+                            var item = baseData.hedgingPortfolio[i];
+                            if (item.symbol.includes(mainAnchorSymbol)) {
+                                mainAnchorBasePrice = baseData.baseEtfPrices[item.symbol];
+                                if (mainAnchorBasePrice > 0) break;
+                            }
+                        });
+                        
+                        if (validWeight > 0) {
+                            if (validWeight < 0.98 || validWeight > 1.02) {
+                                weightedEtfChangeRate = weightedEtfChangeRate / validWeight;
+                            }
+                        }
+
+                        if (mainAnchorBasePrice > 0) {
+                            var mainAnchorChangeRate = equivEtfPrice / mainAnchorBasePrice;
+                            var exchangeRateChange = baseData.todayExchangeRate / baseData.baseExchangeRate;
+                            val = baseData.baseNav * (1 + baseData.position * (weightedEtfChangeRate * exchangeRateChange - 1));
+                            val = baseData.baseNav * (1 + baseData.position * (mainAnchorChangeRate * exchangeRateChange - 1));
+                        }
                     }
                 } else {
                     if (equivEl) equivEl.textContent = '-';
@@ -781,8 +845,10 @@ class JsGenerator:
         
                 var val = 0;
                 if (futPrice > 0 && baseData.baseFuturePrice > 0 && baseData.baseExchangeRate > 0) {
+                    var reqSpot = (baseData.rateType === 'spot');
+                    var todayExchangeRate = (reqSpot && window.latestExchangeRates && window.latestExchangeRates.spot) ? window.latestExchangeRates.spot : baseData.todayExchangeRate;
                     var futureChangeRate = futPrice / baseData.baseFuturePrice;
-                    var exchangeRateChange = baseData.todayExchangeRate / baseData.baseExchangeRate;
+                    var exchangeRateChange = todayExchangeRate / baseData.baseExchangeRate;
                     val = baseData.baseNav * (1 + baseData.position * (futureChangeRate * exchangeRateChange - 1));
                 }
         
@@ -800,7 +866,72 @@ class JsGenerator:
             };
         
             window.updateFuturesData = function() {
-                // 如有额外统一联动的页面要素更新，在此触发
+                Object.keys(window.fundBaseData).forEach(function(code) {
+                    var baseData = window.fundBaseData[code];
+                    if (!baseData || !baseData.futureSymbol || baseData.futureSymbol.trim() === '') return;
+
+                    var futSym = baseData.futureSymbol;
+                    var futPriceEl = document.querySelector('.' + futSym.toLowerCase().replace('ag0', 'ag0') + '-price');
+                    var futurePrice = 0;
+                    if (futPriceEl && futPriceEl.textContent && futPriceEl.textContent !== '-') {
+                        futurePrice = parseFloat(futPriceEl.textContent);
+                    }
+                    
+                    if (futurePrice > 0 && baseData.baseFuturePrice > 0 && baseData.baseExchangeRate > 0 && baseData.todayExchangeRate > 0) {
+                        var reqSpot = (baseData.rateType === 'spot');
+                        var todayExchangeRate = (reqSpot && window.latestExchangeRates && window.latestExchangeRates.spot) ? window.latestExchangeRates.spot : baseData.todayExchangeRate;
+                        
+                        // 1. 更新纯期货估值
+                        var futureChangeRate = futurePrice / baseData.baseFuturePrice;
+                        var exchangeRateChange = todayExchangeRate / baseData.baseExchangeRate;
+                        var exactVal = baseData.baseNav * (1 + baseData.position * (futureChangeRate * exchangeRateChange - 1));
+                        
+                        var exactValEl = document.getElementById('rt-exact-val-' + code);
+                        if (exactValEl) exactValEl.textContent = exactVal.toFixed(4);
+                        
+                        // 2. 更新期货校准估值 (如果支持)
+                        var calib = baseData.latestCalibrationFactor;
+                        if (calib > 0 && exactValEl) {
+                            var calibVal = 0;
+                            if (baseData.category === '指数') {
+                                var equivSpot = futurePrice / calib;
+                                
+                                if (baseData.baseIndexPrice > 0) {
+                                    var spotChangeRate = equivSpot / baseData.baseIndexPrice;
+                                    calibVal = baseData.baseNav * (1 + baseData.position * (spotChangeRate * exchangeRateChange - 1));
+                                } else if (baseData.baseFuturePrice > 0 && baseData.latestCalibrationFactor > 0) {
+                                    var derivedBaseIndexPrice = baseData.baseFuturePrice / baseData.latestCalibrationFactor;
+                                    var spotChangeRate = equivSpot / derivedBaseIndexPrice;
+                                    calibVal = baseData.baseNav * (1 + baseData.position * (spotChangeRate * exchangeRateChange - 1));
+                                }
+                            } else {
+                                // 商品类基金（黄金/原油）的校准估值：强制锚定单一核心资产(GLD/USO)
+                                var equivEtfPrice = futurePrice / calib;
+                                var mainAnchorSymbol = (baseData.category === '黄金') ? 'GLD' : 'USO';
+                                var mainAnchorBasePrice = 0;
+
+                                // 寻找主锚点在投资组合中的各种变体（如GLD, ^GLD, ^GLD-EU）并取其基准价
+                                for (var i = 0; i < baseData.hedgingPortfolio.length; i++) {
+                                    var item = baseData.hedgingPortfolio[i];
+                                    if (item.symbol.includes(mainAnchorSymbol)) {
+                                        mainAnchorBasePrice = baseData.baseEtfPrices[item.symbol];
+                                        if (mainAnchorBasePrice > 0) break;
+                                    }
+                                }
+
+                                if (mainAnchorBasePrice > 0) {
+                                    var mainAnchorChangeRate = equivEtfPrice / mainAnchorBasePrice;
+                                    calibVal = baseData.baseNav * (1 + baseData.position * (mainAnchorChangeRate * exchangeRateChange - 1));
+                                }
+                            }
+                            var calibValEl = document.getElementById('rt-calib-val-' + code);
+                            if (calibValEl && calibVal > 0) calibValEl.textContent = calibVal.toFixed(4);
+                        }
+                    }
+                });
+                
+                // 触发整体页面颜色/红绿灯渲染刷新
+                window.calculateRealTimeValues();
             };
 
             // A股下单执行

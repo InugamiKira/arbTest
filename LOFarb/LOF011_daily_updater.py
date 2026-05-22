@@ -8,6 +8,8 @@ import logging
 from datetime import datetime, timedelta
 import pandas as pd
 import re
+import time
+import random
 
 # 引入项目基座
 from readers.base_app import BaseApp, setup_logging
@@ -105,15 +107,45 @@ class DailyUpdater(BaseApp):
                     db_weights = {row['underlying_symbol'].replace('^', ''): float(row['weight']) for _, row in weight_df.iterrows() if pd.notna(row['weight'])}
                     
                     for port_key in ['valuation_portfolio', 'hedging_portfolio']:
-                        for item in fund.get(port_key, []):
-                            sym = item.get('symbol', '').replace('^', '')
-                            if sym in db_weights:
-                                new_w = db_weights[sym]
-                                old_w = item.get('weight', 0)
-                                if abs(new_w - old_w) > 0.01:
-                                    item['weight'] = round(new_w, 2)
-                                    yaml_updated = True
-                                    self.logger.info(f"🔄 [{code}] YAML权重已同步 ({sym}): {old_w}% -> {new_w:.2f}%")
+                        if port_key in fund:
+                            current_portfolio = fund[port_key]
+                            current_syms = [item.get('symbol', '').replace('^', '') for item in current_portfolio]
+                            
+                            new_portfolio = []
+                            portfolio_changed = False
+                            
+                            # 保留原有锚点映射
+                            anchor_map = {item.get('symbol', '').replace('^', ''): item.get('anchor', 'US') for item in current_portfolio}
+                            
+                            # 1. 添加或更新数据库里的最新有效成分
+                            for sym, w in db_weights.items():
+                                if w > 0:
+                                    anchor = anchor_map.get(sym, 'US')
+                                    if sym not in current_syms:
+                                        # 智能识别新增的区域 ETF 锚点
+                                        if '-EU' in sym: anchor = 'EU'
+                                        elif '-HK' in sym: anchor = 'HK'
+                                        elif '-JP' in sym: anchor = 'JP'
+                                        portfolio_changed = True
+                                        self.logger.info(f"🔄 [{code}] YAML新增成分股 ({sym}): {round(w, 2)}%")
+                                    else:
+                                        old_item = next((i for i in current_portfolio if i.get('symbol', '').replace('^', '') == sym), None)
+                                        if old_item and abs(old_item.get('weight', 0) - w) > 0.01:
+                                            portfolio_changed = True
+                                            self.logger.info(f"🔄 [{code}] YAML权重已同步 ({sym}): {old_item.get('weight', 0)}% -> {round(w, 2)}%")
+                                    new_portfolio.append({'symbol': sym, 'weight': round(w, 2), 'anchor': anchor})
+                                    
+                            # 2. 检查并移除被踢出的旧成分 (如 USO-JP)
+                            for old_sym in current_syms:
+                                if old_sym not in db_weights or db_weights[old_sym] <= 0:
+                                    portfolio_changed = True
+                                    self.logger.info(f"🔄 [{code}] YAML删除成分股 ({old_sym})")
+                                    
+                            if portfolio_changed:
+                                # 将新成分按权重降序排列后直接覆写
+                                new_portfolio = sorted(new_portfolio, key=lambda x: x['weight'], reverse=True)
+                                fund[port_key] = new_portfolio
+                                yaml_updated = True
             conn.close()
             
             if yaml_updated:
@@ -139,41 +171,52 @@ class DailyUpdater(BaseApp):
             exchange_rate_data = data_fetcher.fetch_official_exchange_rate()
             if exchange_rate_data:
                 date_info = exchange_rate_data.get('日期')
-                try:
-                    # 统一日期格式
-                    date_info = pd.to_datetime(str(date_info)).strftime('%Y-%m-%d')
-                except:
-                    date_info = today_str
-                    
                 rate = exchange_rate_data.get('人民币中间价')
-                if rate:
-                    self.db.upsert_exchange_rate(date_info, float(rate))
-                    self.db.mark_access_synced(today_str, source='official_exchange_rate')
-                    self.logger.info(f"✅ 人民币中间价入库: {date_info} -> {rate}")
+                
+                if rate and date_info:
+                    try:
+                        # 统一日期格式
+                        date_info_str = pd.to_datetime(str(date_info)).strftime('%Y-%m-%d')
+                        self.db.upsert_exchange_rate(date_info_str, float(rate))
+                        self.logger.info(f"✅ 人民币中间价入库: {date_info_str} -> {rate}")
+
+                        # 智能防刷：只有当获取到的汇率日期是近期的（T-1或T-0），才标记今日已同步
+                        fetched_date_obj = pd.to_datetime(date_info_str).date()
+                        today_obj = datetime.now().date()
+                        # 中国外汇交易中心在节假日不发布汇率，所以允许最多回溯3天
+                        if fetched_date_obj >= (today_obj - timedelta(days=3)):
+                            self.db.mark_access_synced(today_str, source='official_exchange_rate')
+                            self.logger.info(f"✅ 汇率数据已是最新({date_info_str})，标记今日防刷。")
+                        else:
+                            self.logger.warning(f"⚠️ 获取到的汇率日期({date_info_str})过于陈旧，今日不标记防刷，以便后续重试。")
+                    except Exception as e:
+                        self.logger.error(f"❌ 处理汇率数据时发生异常: {e}")
                 else:
                     self.logger.error("❌ 严重告警：获取人民币中间价为空，估值将无法计算！")
 
     def _safe_save_fund_data(self, date_str, fund_code, price=None, nav=None):
         """安全合并保存 fund 数据，防止 price 和 nav 互相覆盖导致对方变成 NULL"""
         conn = self.db._get_conn()
+        row = None
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT price, nav FROM fund_data WHERE date=? AND fund_code=?", (date_str, fund_code))
             row = cursor.fetchone()
-            
-            exist_price = row[0] if row and row[0] is not None else None
-            exist_nav = row[1] if row and row[1] is not None else None
-            
-            new_price = price if price is not None else exist_price
-            new_nav = nav if nav is not None else exist_nav
-            
-            premium = None
-            if new_price is not None and new_nav is not None and float(new_nav) > 0:
-                premium = (float(new_price) - float(new_nav)) / float(new_nav) * 100
-                
-            self.db.save_fund_data(date=date_str, fund_code=fund_code, price=new_price, nav=new_nav, premium=premium)
         finally:
+            # 🚨 核心修复：必须在写入前先关闭读连接，释放读锁，防止死锁
             conn.close()
+            
+        exist_price = row[0] if row and row[0] is not None else None
+        exist_nav = row[1] if row and row[1] is not None else None
+        
+        new_price = price if price is not None else exist_price
+        new_nav = nav if nav is not None else exist_nav
+        
+        premium = None
+        if new_price is not None and new_nav is not None and float(new_nav) > 0:
+            premium = (float(new_price) - float(new_nav)) / float(new_nav) * 100
+            
+        self.db.save_fund_data(date=date_str, fund_code=fund_code, price=new_price, nav=new_nav, premium=premium)
 
     def step4_fetch_lof_market(self):
         """步骤四：抓取各基金的净值和收盘价"""
@@ -430,6 +473,45 @@ class DailyUpdater(BaseApp):
         else:
             self.db.mark_access_synced(today_str, source='regional_etf')
 
+
+    def step7_fetch_extra_calibrations(self):
+        """步骤七：从Woody网页补充抓取核心指数/商品的校准值"""
+        self.logger.info("=== 步骤七：抓取Woody网页补充校准值 ===")
+
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        if self.db.is_access_synced_today(today_str, source='woody_extra_calibrations'):
+            self.logger.info("✅ 今日已获取过 Woody 网页补充校准值，为防封号跳过...")
+            return
+
+        calibration_values = self.woody_crawler.get_future_calibration_values()
+        if not calibration_values:
+            self.logger.warning("⚠️ 未获取到校准值数据")
+            return
+
+        # symbol_map: {key: db_symbol}
+        symbol_map = {
+            'gold': 'GC',
+            'oil': 'CL',
+            'sp500': 'ES',
+            'nasdaq': 'NQ'
+        }
+
+        for key, db_sym in symbol_map.items():
+            if key not in calibration_values:
+                continue
+
+            calib_val = calibration_values[key]
+            date_str = calibration_values.get(f'{key}_date', '')
+
+            if calib_val and calib_val > 0:
+                self.db.upsert_futures_daily(date=date_str, symbol=db_sym, calibration=calib_val)
+                self.logger.info(f"✅ [校准值] {db_sym} ({date_str}) -> {calib_val} 入库成功。")
+            else:
+                self.logger.warning(f"⚠️ [{db_sym}] 获取到的校准值无效，跳过入库。")
+                
+        self.db.mark_access_synced(today_str, source='woody_extra_calibrations')
+
+
     def run(self):
         self.logger.info("🚀 开始执行每日数据大一统更新流水线...")
         self.step1_and_2_fetch_woody_api()
@@ -439,6 +521,7 @@ class DailyUpdater(BaseApp):
         self.step4_fetch_lof_market()
         self.step5_fetch_usa_market_data()
         self.step6_fetch_woody_regional_etfs()
+        self.step7_fetch_extra_calibrations()
         self.logger.info("🎉 流水线执行完毕，数据大盘一切就绪！")
 
 if __name__ == "__main__":

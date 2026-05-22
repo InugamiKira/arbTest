@@ -25,19 +25,32 @@ taskkill /f /im python.exe > nul 2>&1
 
 set PYTHONIOENCODING=utf-8
 
-echo [0/6] Skipping manual 011 update (handled intelligently by LOF03)...
-echo [1/6] Skipping manual 012 static valuation (handled intelligently by LOF03)...
+echo [1/6] Running daily data update (LOF011)...
+"%PY%" -X utf8 LOF011_daily_updater.py
+if errorlevel 1 (
+    echo [Error] LOF011 failed!
+    pause > nul
+    exit /b 1
+)
 
-echo [2/6] Starting admin panel (port 5002)...
+echo [2/6] Running static valuation calculation (LOF012)...
+"%PY%" -X utf8 LOF012_calculate_static_valuation.py
+if errorlevel 1 (
+    echo [Error] LOF012 failed!
+    pause > nul
+    exit /b 1
+)
+
+echo [3/6] Starting admin panel (port 5002) in a new window...
 start "LOF Admin (5002)" /D "%ROOT%" cmd /k ""%PY%" -X utf8 LOF01_admin_launcher.py"
 
-echo [3/6] Starting data service (port 5000)...
+echo [4/6] Starting data service (port 5000)...
 start "LOF Backend (5000)" /D "%ROOT%" cmd /k ""%PY%" -X utf8 LOF02_fetch_trade_data.py"
 
 echo Waiting for initialization (8 sec)...
 timeout /t 8 > nul
 
-echo [4/6] Generating report...
+echo [5/6] Generating report...
 pushd "%ROOT%"
 "%PY%" -X utf8 LOF03_generate_monitor_html.py > "%LOGDIR%\html_generate.log" 2>&1
 if errorlevel 1 (
@@ -48,7 +61,7 @@ if errorlevel 1 (
 popd
 echo Report generated.
 
-echo [5/6] Opening browser...
+echo [6/6] Opening browser...
 start "" "http://localhost:5000/"
 
 echo.

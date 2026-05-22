@@ -38,99 +38,81 @@ class WoodyWebCrawler:
         return "sz"
     
     def get_future_calibration_values(self):
-        """从Woody网页爬取期货校准值"""
-        # 检查是否今天已经爬取过
+        """从Woody网页爬取所有期货（GC CL NQ ES）的校准值（统一使用calibrationhistorycn.php）"""
         today = datetime.now().date()
         if self.last_crawl_date == today:
             print("\n=== 今日已爬取过校准值，跳过 ===")
             return None
         
-        print("\n=== woody网页爬取期货校准值 ===")
+        print("\n=== woody网页爬取校准值 ===")
         
         calibration_values = {}
-
-        # 黄金期货校准值
-        print("爬取黄金期货校准值...")
-        gold_url = "https://palmmicro.com/woody/res/sz161116cn.php"  # 嘉实黄金LOF
+        symbol_map = {
+            'GLD': ('gold', '黄金'),
+            'USO': ('oil', '石油'),
+            '^GSPC': ('sp500', '标普500'),
+            '^NDX': ('nasdaq', '纳斯达克100')
+        }
         
-        try:
-            response = requests.get(gold_url, headers=self.woody_headers, timeout=15, verify=False, proxies={"http": None, "https": None})
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                # 查找基金指数对照表
-                table = None
-                for t in soup.find_all('table'):
-                    if '基金指数对照表' in t.text or '校准值' in t.text:
-                        table = t
-                        break
+        for woody_sym, (key, name) in symbol_map.items():
+            url = f'https://palmmicro.com/woody/res/calibrationhistorycn.php?symbol={woody_sym}'
+            print(f"爬取{name}校准值，URL: {url}")
+            
+            try:
+                response = requests.get(url, headers=self.woody_headers, timeout=15, verify=False, proxies={"http": None, "https": None})
                 
-                if table:
-                    # 查找表格中的校准值
-                    rows = table.find_all('tr')
-                    for row in rows[1:]:  # 跳过表头
-                        cols = row.find_all('td')
-                        if len(cols) >= 5:  # 确保有足够的列
-                            code = cols[0].text.strip()
-                            if code == 'GLD':
-                                calibration_value = cols[3].text.strip()
-                                date_str = cols[4].text.strip()  # 爬取日期
-                                try:
-                                    calibration_values['gold'] = float(calibration_value)
-                                    calibration_values['gold_date'] = date_str
-                                    print(f"  [OK] 黄金期货校准值: {calibration_values['gold']} (日期: {date_str})")
-                                    break
-                                except ValueError:
-                                    pass  # 跳过无法转换的值
+                if response.status_code == 200:
+                    response.encoding = response.apparent_encoding
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    tables = soup.find_all('table')
+                    
+                    found = False
+                    for table in tables:
+                        rows = table.find_all('tr')
+                        if len(rows) < 2:
+                            continue
+                        
+                        all_cells = []
+                        for row in rows:
+                            cells = row.find_all(['td', 'th'])
+                            for cell in cells:
+                                text = cell.get_text(strip=True)
+                                if text:
+                                    all_cells.append(text)
+                        
+                        if '日期' in all_cells and '校准值' in all_cells:
+                            date_idx = all_cells.index('日期')
+                            calib_idx = all_cells.index('校准值')
+                            
+                            data_start = max(date_idx, calib_idx) + 1
+                            
+                            for i in range(data_start, len(all_cells)):
+                                cell = all_cells[i]
+                                if re.match(r'^\d{4}-\d{2}-\d{2}$', cell):
+                                    date_value = cell
+                                    if i + 1 < len(all_cells):
+                                        next_cell = all_cells[i + 1]
+                                        try:
+                                            calib_value = float(next_cell)
+                                            calibration_values[key] = calib_value
+                                            calibration_values[f'{key}_date'] = date_value
+                                            print(f"  [OK] {name}校准值: {calib_value} (日期: {date_value})")
+                                            found = True
+                                            break
+                                        except ValueError:
+                                            pass
+                            if found:
+                                break
+                    
+                    if not found:
+                        print(f"  [ERROR] 未找到{name}校准值数据")
                 else:
-                    print("  [ERROR] 未找到基金指数对照表")
-            else:
-                print(f"  [ERROR] 请求黄金期货校准值失败，状态码: {response.status_code}")
-        except Exception as e:
-            print(f"  [ERROR] 爬取黄金期货校准值失败: {e}")
+                    print(f"  [ERROR] 请求{name}校准值失败，状态码: {response.status_code}")
+            except Exception as e:
+                print(f"  [ERROR] 爬取{name}校准值失败: {e}")
         
-        # 石油期货校准值
-        print("  爬取石油期货校准值...")
-        oil_url = "https://palmmicro.com/woody/res/sz160723cn.php"  # 嘉实原油LOF
-        
-        try:
-            response = requests.get(oil_url, headers=self.woody_headers, timeout=15, verify=False, proxies={"http": None, "https": None})
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                # 查找基金指数对照表
-                table = None
-                for t in soup.find_all('table'):
-                    if '基金指数对照表' in t.text or '校准值' in t.text:
-                        table = t
-                        break
-                
-                if table:
-                    # 查找表格中的校准值
-                    rows = table.find_all('tr')
-                    for row in rows[1:]:  # 跳过表头
-                        cols = row.find_all('td')
-                        if len(cols) >= 5:  # 确保有足够的列
-                            code = cols[0].text.strip()
-                            if code == 'USO':
-                                calibration_value = cols[3].text.strip()
-                                date_str = cols[4].text.strip()  # 爬取日期
-                                try:
-                                    calibration_values['oil'] = float(calibration_value)
-                                    calibration_values['oil_date'] = date_str
-                                    print(f"  [OK] 石油期货校准值: {calibration_values['oil']} (日期: {date_str})")
-                                    break
-                                except ValueError:
-                                    pass  # 跳过无法转换的值
-                else:
-                    print("  [ERROR] 未找到基金指数对照表")
-            else:
-                print(f"  [ERROR] 请求石油期货校准值失败，状态码: {response.status_code}")
-        except Exception as e:
-            print(f"  [ERROR] 爬取石油期货校准值失败: {e}")
-        
-        # 更新上次爬取日期
         self.last_crawl_date = today
-        
-        return calibration_values
+        return calibration_values if calibration_values else None
     
     def get_woody_backup_data(self, config):
         """从Woody网页爬取数据作为API失败时的备份"""
