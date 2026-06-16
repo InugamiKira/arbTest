@@ -10,8 +10,8 @@ funds:
   name: 南方原油
   category: 原油
   holdings:
-    equity_ratio: 76.44
-    cash_ratio: 23.56
+    equity_ratio: 78.31
+    cash_ratio: 21.69
   holdings_portfolio: []
   future_hedging:
   - symbol: MCL
@@ -23,20 +23,20 @@ funds:
     name: 微原油期货
   valuation_portfolio:
   - symbol: USO-EU
-    weight: 64.02
+    weight: 54.68
     anchor: EU
   - symbol: USO
-    weight: 35.98
+    weight: 45.32
     anchor: US
   trade_etf: USO
   trade_future: MCL
-  position: 76.44
+  position: 78.31
 - code: '160723'
   name: 嘉实原油
   category: 原油
   holdings:
-    equity_ratio: 77.4
-    cash_ratio: 22.6
+    equity_ratio: 79.52
+    cash_ratio: 20.48
   holdings_portfolio:
   - symbol: USO
     weight: 17.22
@@ -83,20 +83,20 @@ funds:
     name: 微原油期货
   valuation_portfolio:
   - symbol: USO
-    weight: 62.21
+    weight: 68.31
     anchor: US
   - symbol: USO-EU
-    weight: 37.79
+    weight: 31.69
     anchor: EU
   trade_etf: USO
   trade_future: MCL
-  position: 77.4
+  position: 79.52
 - code: '161129'
   name: 易方达原油
   category: 原油
   holdings:
-    equity_ratio: 79.68
-    cash_ratio: 20.32
+    equity_ratio: 81.28
+    cash_ratio: 18.72
   holdings_portfolio:
   - symbol: CRUD.L
     weight: 18.52
@@ -138,50 +138,50 @@ funds:
     name: 微原油期货
   valuation_portfolio:
   - symbol: USO
-    weight: 50.26
+    weight: 55.09
     anchor: US
   - symbol: USO-EU
-    weight: 49.74
+    weight: 44.91
     anchor: EU
   trade_etf: USO
   trade_future: MCL
-  position: 79.68
+  position: 81.28
 - code: '160216'
   name: 国泰大宗商品
   category: 黄金
   trade_etf: GLD,USO
   trade_future: ''
   holdings:
-    equity_ratio: 63.54
-    cash_ratio: 36.46
+    equity_ratio: 63.23
+    cash_ratio: 36.77
   valuation_portfolio:
   - symbol: SLV
-    weight: 59.3
+    weight: 59.07
     anchor: US
   - symbol: USO
-    weight: 40.7
+    weight: 40.93
     anchor: US
   sina_index_url: ''
   holdings_portfolio: []
   future_hedging: []
-  position: 63.54
+  position: 63.23
 - code: '161815'
   name: 银华抗通胀
   category: 黄金
   trade_etf: GLD,USO
   trade_future: ''
   holdings:
-    equity_ratio: 74.32
-    cash_ratio: 25.68
+    equity_ratio: 73.23
+    cash_ratio: 26.77
   valuation_portfolio:
   - symbol: GLD
-    weight: 56.9
+    weight: 54.23
     anchor: US
   - symbol: USO-EU
-    weight: 23.98
+    weight: 30.68
     anchor: EU
   - symbol: USO
-    weight: 19.12
+    weight: 15.09
     anchor: US
   sina_index_url: ''
   holdings_portfolio: []
@@ -198,13 +198,13 @@ funds:
     currency: USD
     exchange: SMART
     name: 原油
-  position: 74.32
+  position: 73.23
 - code: '160719'
   name: 嘉实黄金
   category: 黄金
   holdings:
-    equity_ratio: 96.28
-    cash_ratio: 3.72
+    equity_ratio: 96.16
+    cash_ratio: 3.84
   holdings_portfolio:
   - symbol: GLD
     weight: 19.02
@@ -246,14 +246,14 @@ funds:
     name: ''
   valuation_portfolio:
   - symbol: GLD
-    weight: 53.87
+    weight: 52.39
     anchor: US
   - symbol: GLD-EU
-    weight: 46.13
+    weight: 47.61
     anchor: EU
   trade_etf: GLD
   trade_future: MGC
-  position: 96.28
+  position: 96.16
 - code: '161116'
   name: 易方达黄金
   category: 黄金
@@ -388,8 +388,8 @@ funds:
   name: 中信保诚
   category: 黄金
   holdings:
-    equity_ratio: 90.45
-    cash_ratio: 9.55
+    equity_ratio: 90.51
+    cash_ratio: 9.49
   holdings_portfolio: []
   future_hedging:
   - symbol: MGC
@@ -401,14 +401,14 @@ funds:
     name: ''
   valuation_portfolio:
   - symbol: GLD
-    weight: 92.81
+    weight: 92.55
     anchor: US
   - symbol: GLD-EU
-    weight: 7.19
+    weight: 7.45
     anchor: EU
   trade_etf: GLD
   trade_future: MGC
-  position: 90.45
+  position: 90.51
 - code: '513350'
   name: 富国标普石油
   category: 纯ETF
@@ -580,6 +580,187 @@ funds:
     exchange: SMART
     name: 微型纳斯达克100指数期货
   position: 94.0
+- code: '164824'
+  name: 交银印度
+  category: 纯ETF
+  trade_etf: INDA
+  trade_future: ''
+  holdings:
+    equity_ratio: 89.17
+    cash_ratio: 10.83
+  valuation_portfolio:
+  - symbol: INDA
+    weight: 59.4
+    anchor: US
+  - symbol: INDA-EU
+    weight: 34.78
+    anchor: EU
+  - symbol: INDA-JP
+    weight: 4.84
+    anchor: JP
+  - symbol: INDA-HK
+    weight: 0.98
+    anchor: HK
+  sina_index_url: ''
+  holdings_portfolio: []
+  future_hedging: []
+  position: 89.17
+- code: '164906'
+  name: 交银中证海外
+  category: 纯ETF
+  trade_etf: KWEB
+  trade_future: ''
+  holdings:
+    equity_ratio: 92.0
+    cash_ratio: 8.0
+  valuation_portfolio:
+  - symbol: KWEB
+    weight: 100.0
+    anchor: US
+  sina_index_url: ''
+  holdings_portfolio: []
+  future_hedging: []
+  position: 92.0
+- code: '161126'
+  name: 标普医疗保健
+  category: 纯ETF
+  trade_etf: RSPH
+  trade_future: ''
+  holdings:
+    equity_ratio: 95.0
+    cash_ratio: 5.0
+  valuation_portfolio:
+  - symbol: RSPH
+    weight: 100.0
+    anchor: US
+  sina_index_url: ''
+  holdings_portfolio: []
+  future_hedging: []
+  position: 95.0
+- code: '163208'
+  name: 诺安油气能源
+  category: 黄金原油
+  trade_etf: XLE
+  trade_future: ''
+  holdings:
+    equity_ratio: 88.87
+    cash_ratio: 11.13
+  valuation_portfolio:
+  - symbol: XLE
+    weight: 84.93
+    anchor: US
+  - symbol: USO
+    weight: 15.07
+    anchor: US
+  sina_index_url: ''
+  holdings_portfolio: []
+  future_hedging: []
+  position: 88.87
+- code: '160644'
+  name: 港美互联网
+  category: 混合跨境
+  trade_etf: ''
+  trade_future: ''
+  holdings:
+    equity_ratio: 90.0
+    cash_ratio: 10.0
+  valuation_portfolio:
+  - symbol: TSM
+    weight: 14.79
+    anchor: US
+  - symbol: NVDA
+    weight: 14.73
+    anchor: US
+  - symbol: SNDK
+    weight: 13.94
+    anchor: US
+  - symbol: MU
+    weight: 12.19
+    anchor: US
+  - symbol: '00700'
+    weight: 10.71
+    anchor: HK
+  - symbol: GOOGL
+    weight: 9.26
+    anchor: US
+  - symbol: 09988
+    weight: 7.63
+    anchor: US
+  - symbol: 00883
+    weight: 6.44
+    anchor: US
+  - symbol: AVGO
+    weight: 5.68
+    anchor: US
+  - symbol: ASML
+    weight: 4.64
+    anchor: US
+  sina_index_url: ''
+  holdings_portfolio: []
+  future_hedging: []
+  position: 90.0
+- code: '501225'
+  name: 顺丰半导体芯片
+  category: 混合跨境
+  trade_etf: SOXX
+  trade_future: ''
+  holdings:
+    equity_ratio: 87.67
+    cash_ratio: 12.33
+  valuation_portfolio:
+  - symbol: SOXX
+    weight: 76.8
+    anchor: US
+  - symbol: SZ159560
+    weight: 23.2
+    anchor: US
+  sina_index_url: ''
+  holdings_portfolio: []
+  future_hedging: []
+  position: 87.67
+- code: '501312'
+  name: 海外科技
+  category: 混合跨境
+  trade_etf: ''
+  trade_future: ''
+  holdings:
+    equity_ratio: 89.86
+    cash_ratio: 10.14
+  valuation_portfolio:
+  - symbol: ARKK
+    weight: 20.85
+    anchor: US
+  - symbol: ARKG
+    weight: 17.08
+    anchor: US
+  - symbol: ARKQ
+    weight: 12.9
+    anchor: US
+  - symbol: SOXX
+    weight: 10.58
+    anchor: US
+  - symbol: AIQ
+    weight: 8.74
+    anchor: US
+  - symbol: QQQ
+    weight: 8.29
+    anchor: US
+  - symbol: BOTZ
+    weight: 8.28
+    anchor: US
+  - symbol: XLK
+    weight: 7.17
+    anchor: US
+  - symbol: SMH
+    weight: 4.77
+    anchor: US
+  - symbol: FINX
+    weight: 1.34
+    anchor: US
+  sina_index_url: ''
+  holdings_portfolio: []
+  future_hedging: []
+  position: 89.86
 - code: '161226'
   name: 国瑞白银期货
   category: 其他

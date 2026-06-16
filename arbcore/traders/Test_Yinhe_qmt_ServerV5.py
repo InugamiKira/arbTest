@@ -1,26 +1,29 @@
 # encoding: gbk
 # =================================================================
-# Test_Yinhe_qmt_ServerV5.py - 银河QMT Socket Server v5.0
-# 版本日期：2026-06-15
-# 【重要】此文件是运行在银河QMT客户端内部的策略代码
-# 不是Python主程序调用的，请在QMT策略编辑器中加载此代码
+# Test_Yinhe_qmt_ServerV5.py (QMT策略) v5.1.3
+# 日期: 2026-06-16
+# 变更日志:
+#   v5.1.3 (2026-06-16) - position/account回调静默, 日志只显示下单/成交/错误
+#   v5.1.2 (2026-06-16) - position_callback: 60s时间去重(解决同代码多行仓位互相覆盖刷屏)
+#   v5.0   (2026-06-15) - rewrite from v4.3, main-thread queue mode, QMT thread compliant
+# IMPORTANT: This file runs INSIDE the QMT client strategy editor, not standalone.
 # =================================================================
-# 架构：
-#   Socket 子线程 → pending_actions 队列 → tick_push 定时器(200ms)
-#   主线程 drain → 执行 passorder（安全，不阻塞消息总线）
-#   quote_push 定时器(1s) → 主线程 get_full_tick → 广播 TICK
+# Architecture:
+#   Socket thread -> pending_actions queue -> tick_push timer(200ms)
+#   Main thread drain -> passorder (safe, no message bus blocking)
+#   quote_push timer(1s) -> main thread get_full_tick -> broadcast TICK
 #
-# 外部协议（兼容 v4.0，trade_manager.py 无需修改）：
-#   BUY,code,volume,price          → OK\n
-#   SELL,code,volume,price         → OK\n
-#   QUERY_TICK,code                → TICK_RESULT,code,lastPrice,preClose\n
-#   SUBSCRIBE,code1,code2,...      → SUBSCRIBE_OK\n
-#   PING                           → PONG\n
+# External protocol (v4 compatible, trade_manager.py unchanged):
+#   BUY,code,volume,price          -> OK\n
+#   SELL,code,volume,price         -> OK\n
+#   QUERY_TICK,code                -> TICK_RESULT,code,lastPrice,preClose\n
+#   SUBSCRIBE,code1,code2,...      -> SUBSCRIBE_OK\n
+#   PING                           -> PONG\n
 #
-# 参考：Jiang_big_qmt_trader_server.py v3.6.0
-# - builtins 共享状态解决 QMT 命名空间隔离
-# - socket_thread_gen 解决僵尸线程残留
-# - pending_actions 队列保证 C++ API 只在主线程调用
+# Ref: Jiang_big_qmt_trader_server.py v3.6.0
+# - builtins for cross-namespace shared state
+# - socket_thread_gen to kill zombie threads
+# - pending_actions queue ensures C++ API called only by main thread
 # =================================================================
 
 import builtins
@@ -29,16 +32,15 @@ import threading
 import time
 
 # ==================== 版本 ====================
-SERVER_VERSION = '5.0.0 (2026-06-15)'
+SERVER_VERSION = '5.1.3 (2026-06-16)'
 
 # ==================== 共享状态（builtins）====================
-# QMT 对每个回调（init, handlebar, tick_push, socket线程）赋予独立命名空间
-# 模块级全局变量在各命名空间中是不同的对象！
-# 只有 builtins 是真正跨命名空间共享的。
+# QMT对每个回调赋予独立命名空间，模块级全局变量在各空间中不同
+# 只有 builtins 是真正跨命名空间共享的
 _V5_KEY = '_qmt_v5_state'
 
 def _S():
-    """获取共享状态字典，首次访问时初始化"""
+    """get shared state dict, init on first access"""
     s = getattr(builtins, _V5_KEY, None)
     if s is None:
         s = {}
@@ -53,9 +55,9 @@ def _S():
         'pending_actions': [],
         'pending_lock': threading.Lock(),
         'subscribed_stocks': set(),
-        'latest_ticks': {},           # code -> tick dict（QUERY_TICK 从此读，不调 C++）
+        'latest_ticks': {},           # QUERY_TICK reads from here, no C++ call
         'ticks_lock': threading.Lock(),
-        'socket_gen': [0],            # bumped by init(); 旧线程检测到 gen 不匹配时自行退出
+        'socket_gen': [0],            # bumped by init(); old threads check gen mismatch and exit
         'push_count': [0],
     }
     for k, v in defaults.items():
@@ -63,17 +65,17 @@ def _S():
             s[k] = v
     return s
 
-_S()  # 模块加载时确保状态字典存在
+_S()  # ensure state dict exists at module load
 
-# ==================== 队列机制 ====================
+# ==================== QUEUE MECHANISM ====================
 def _enqueue(action):
-    """安全入队，可在任意线程调用（纯 Python 操作，不碰 C++ API）"""
+    """safe enqueue, callable from any thread (pure Python, no C++ API)"""
     s = _S()
     with s['pending_lock']:
         s['pending_actions'].append(action)
 
 def _drain(ContextInfo):
-    """在主线程定时器回调中执行：出队并调用 C++ API"""
+    """main thread timer callback: dequeue and call C++ API"""
     s = _S()
     with s['pending_lock']:
         if not s['pending_actions']:
@@ -92,7 +94,7 @@ def _drain(ContextInfo):
             print(f"[QMTv5][drain] EXC: {e}")
 
 def _do_place(ContextInfo, act):
-    """主线程执行 passorder"""
+    """main thread executes passorder"""
     s = _S()
     acc_id = s['account_id']
     if not acc_id:
@@ -109,7 +111,7 @@ def _do_place(ContextInfo, act):
         print(f"[QMTv5][place] FAIL: {e}")
 
 def _do_cancel(ContextInfo, act):
-    """主线程执行撤单"""
+    """main thread executes cancel order"""
     s = _S()
     acc_id = s['account_id']
     if not acc_id:
@@ -120,7 +122,7 @@ def _do_cancel(ContextInfo, act):
     except Exception as e:
         print(f"[QMTv5][cancel] FAIL: {e}")
 
-# ==================== Socket 层 ====================
+# ==================== SOCKET LAYER ====================
 def _safe_send(conn, data):
     try:
         conn.sendall(data)
@@ -128,7 +130,7 @@ def _safe_send(conn, data):
         pass
 
 def _broadcast(msg):
-    """向所有活跃客户端广播消息"""
+    """broadcast message to all active clients"""
     encoded = msg.encode('utf-8')
     s = _S()
     with s['clients_lock']:
@@ -142,7 +144,7 @@ def _broadcast(msg):
             s['active_clients'].remove(c)
 
 def client_handler(conn, addr):
-    """Socket 子线程：只做网络 IO，不调 C++ API"""
+    """Socket child thread: network IO only, no C++ API calls"""
     s = _S()
     with s['clients_lock']:
         s['active_clients'].append(conn)
@@ -167,7 +169,7 @@ def client_handler(conn, addr):
                     _safe_send(conn, b'PONG\n')
 
                 elif action in ('BUY', 'SELL') and len(parts) >= 4:
-                    # BUY,code,volume,price  → 入队，主线程执行 passorder
+                    # BUY,code,volume,price -> enqueue, main thread executes passorder
                     _enqueue({
                         'kind': 'place',
                         'side': action,
@@ -178,7 +180,7 @@ def client_handler(conn, addr):
                     _safe_send(conn, b'OK\n')
 
                 elif action == 'QUERY_TICK' and len(parts) >= 2:
-                    # 从缓存读取，不调 C++
+                    # read from cache, no C++ call
                     code = parts[1].strip()
                     with s['ticks_lock']:
                         tick = s['latest_ticks'].get(code, {})
@@ -190,7 +192,7 @@ def client_handler(conn, addr):
                 elif action == 'SHUTDOWN':
                     print(f"[QMTv5] SHUTDOWN received, signaling old server to exit")
                     _broadcast("SHUTDOWN\n")
-                    # 碰 socket_gen 让所有旧线程退出
+                    # bump socket_gen to make old threads exit
                     s['socket_gen'][0] += 1
 
                 elif action == 'SUBSCRIBE' and len(parts) > 1:
@@ -214,11 +216,11 @@ def client_handler(conn, addr):
             pass
 
 def socket_server_thread():
-    """Socket 监听线程：支持 generation 自退出 + 僵尸端口抢占"""
+    """Socket server thread: supports generation self-exit + zombie port preemption"""
     s = _S()
     my_gen = s['socket_gen'][0]
 
-    # ---- 僵尸端口抢占：先通知旧 v5.0 线程退出 ----
+    # ---- zombie port preemption: send SHUTDOWN to old v5.0 thread ----
     try:
         probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         probe.settimeout(0.5)
@@ -228,9 +230,9 @@ def socket_server_thread():
         time.sleep(0.5)
         print(f"[QMTv5] sent SHUTDOWN to old server on 8888")
     except Exception:
-        pass  # 没有旧服务端在运行，正常启动
+        pass  # no old server running, normal startup
 
-    # ---- 绑定端口（SO_REUSEADDR 允许与僵尸共存，但我们是最后绑定者）----
+    # ---- bind port (SO_REUSEADDR allows coexistence with zombie, but we are the last binder) ----
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
@@ -264,16 +266,16 @@ def socket_server_thread():
         except Exception:
             pass
 
-# ==================== QMT 回调 ====================
+# ==================== QMT CALLBACKS ====================
 def init(ContextInfo):
     print("=" * 50)
-    print("[QMTv5] v5.0 主线程队列模式启动")
+    print(f"[QMTv5] v{SERVER_VERSION} 主线程队列模式启动")
     print("=" * 50)
 
     s = _S()
     s['context'] = ContextInfo
 
-    # 从 QMT 全局变量读取账户（"资金账号"绑定）
+    # read account from QMT global variables
     try:
         s['account_id'] = account
         s['account_type'] = accountType
@@ -289,34 +291,34 @@ def init(ContextInfo):
         except Exception as e:
             print(f"[QMTv5][WARN] set_account failed: {e}")
 
-    # 生成新 generation，旧 socket 线程将自动退出
+    # bump generation, old socket thread will auto-exit
     s['socket_gen'][0] += 1
     t = threading.Thread(target=socket_server_thread)
     t.daemon = True
     t.start()
 
-    # 200ms 定时器：消费订单队列（主线程执行 passorder）
+    # 200ms timer: consume order queue (main thread executes passorder)
     ContextInfo.run_time("tick_push", "200nMilliSecond", "2020-01-01 09:30:00")
-    # 1s 定时器：推送行情（主线程执行 get_full_tick）
+    # 1s timer: push TICK quotes (main thread executes get_full_tick)
     ContextInfo.run_time("quote_push", "1nSecond", "2020-01-01 09:30:00")
 
     print(f"[QMTv5] v{SERVER_VERSION} initialized, account={s['account_id']}")
 
 def tick_push(ContextInfo):
-    """200ms 定时器：消费 pending_actions 队列"""
+    """200ms timer: consume pending_actions queue"""
     _drain(ContextInfo)
     s = _S()
     s['push_count'][0] += 1
 
 def quote_push(ContextInfo):
-    """1s 定时器：推送 TICK 行情"""
+    """1s timer: push TICK quotes"""
     s = _S()
     if not s['subscribed_stocks'] or not s['account_id']:
         return
     codes = list(s['subscribed_stocks'])
     if not codes:
         return
-    with s['api_lock']:  # 主线程调 C++ 也加锁保护（多重定时器防竞争）
+    with s['api_lock']:  # protect C++ calls from multi-timer competition
         try:
             ticks = ContextInfo.get_full_tick(codes)
         except Exception:
@@ -324,11 +326,11 @@ def quote_push(ContextInfo):
     if not ticks:
         return
 
-    # 更新缓存（供 QUERY_TICK 读取）
+    # update cache (for QUERY_TICK)
     with s['ticks_lock']:
         s['latest_ticks'].update(ticks)
 
-    # 广播 TICK 给所有客户端
+    # broadcast TICK to all clients
     for code, tick in ticks.items():
         ask_prices = tick.get('askPrice', [0]*5)
         ask_vols   = tick.get('askVol',   [0]*5)
@@ -347,11 +349,11 @@ def quote_push(ContextInfo):
         _broadcast(msg)
 
 def handlebar(ContextInfo):
-    """QMT 框架要求必须存在，仅用于 GIL 让渡"""
+    """QMT framework requires this, only used for GIL yield"""
     time.sleep(0.001)
 
 def order_callback(ContextInfo, orderInfo):
-    """委托状态更新"""
+    """order status update"""
     try:
         status = getattr(orderInfo, 'm_nOrderStatus', None)
         sysid = getattr(orderInfo, 'm_strOrderSysID', '') or ''
@@ -361,7 +363,7 @@ def order_callback(ContextInfo, orderInfo):
         pass
 
 def deal_callback(ContextInfo, dealInfo):
-    """成交回报"""
+    """deal/trade callback"""
     try:
         code = getattr(dealInfo, 'm_strInstrumentID', '')
         price = getattr(dealInfo, 'm_dPrice', 0.0)
@@ -371,33 +373,39 @@ def deal_callback(ContextInfo, dealInfo):
         pass
 
 def orderError_callback(ContextInfo, passOrderInfo, msg):
-    """下单错误"""
+    """order error callback"""
     try:
         code = getattr(passOrderInfo, 'm_strInstrumentID', '') or ''
         print(f"[QMTv5][error] code={code} msg={msg}")
     except Exception:
         pass
 
+_last_pos_key = '_qmt_v5_last_pos_time'
+
 def position_callback(ContextInfo, positionInfo):
-    """持仓更新"""
-    try:
-        code = getattr(positionInfo, 'm_strInstrumentID', '') or ''
-        vol = getattr(positionInfo, 'm_nVolume', 0) or 0
-        price = getattr(positionInfo, 'm_dOpenPrice', 0.0) or 0.0
-        if vol > 0:
-            print(f"[QMTv5][position] {code} {vol}@{price}")
-    except Exception:
-        pass
+    """position update (60s dedup, only loud when needed)"""
+    # User requested silence: only [place]/[order]/[deal]/[error] logs matter.
+    # Uncomment the block below to re-enable position logging.
+    # try:
+    #     code = getattr(positionInfo, 'm_strInstrumentID', '') or ''
+    #     vol = getattr(positionInfo, 'm_nVolume', 0) or 0
+    #     price = getattr(positionInfo, 'm_dOpenPrice', 0.0) or 0.0
+    #     if vol <= 0:
+    #         return
+    #     pos_times = getattr(builtins, _last_pos_key, {})
+    #     now = time.time()
+    #     last_time = pos_times.get(code, 0)
+    #     if now - last_time >= 60:
+    #         pos_times[code] = now
+    #         setattr(builtins, _last_pos_key, pos_times)
+    #         print(f"[QMTv5][position] {code} {vol}@{price}")
+    # except Exception:
+    #     pass
+    pass
 
 _last_cash_key = '_qmt_v5_last_cash'
 
 def account_callback(ContextInfo, accountInfo):
-    """资金更新（仅变化时打印，避免每5秒刷屏）"""
-    try:
-        last = getattr(builtins, _last_cash_key, 0.0)
-        avail = getattr(accountInfo, 'm_dAvailable', 0.0) or 0.0
-        if abs(avail - last) > 0.01:
-            setattr(builtins, _last_cash_key, avail)
-            print(f"[QMTv5][cash] available={avail}")
-    except Exception:
-        pass
+    """cash update (silent by default)"""
+    # User requested silence for cash logs. Uncomment to re-enable.
+    pass

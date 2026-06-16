@@ -18,6 +18,7 @@ from arbcore.base_app import BaseApp, setup_logging
 from arbcore.fetchers.historical import HistoricalDataManager
 from arbcore.fetchers.woody_web_crawler import WoodyWebCrawler
 from arbcore.fetchers.woody_api_service import WoodyAPIService
+from arbcore.calculators.static_valuation import StaticValuationCalculator
 from arbcore.config.account_private import WOODY_USERNAME, WOODY_PASSWORD
 try:
     from arbcore.config.account_private import VPS_HOST, VPS_PORT, VPS_USER, VPS_PASSWORD, VPS_DATA_DIR, VPS_KEY_PATH, VPS_KEY_PASSWORD
@@ -27,7 +28,7 @@ except ImportError:
 class DailyUpdater(BaseApp):
     def __init__(self):
         scripts_dir = os.path.dirname(os.path.abspath(__file__))
-        super().__init__("LOF01_daily_updater", app_dir=scripts_dir)
+        super().__init__("daily_updater", app_dir=scripts_dir)
         self.woody_crawler = WoodyWebCrawler()
         self.hist_manager = HistoricalDataManager(db_manager=self.db)
         self._woody_logged_in = False  # 延迟登录标记
@@ -746,6 +747,27 @@ class DailyUpdater(BaseApp):
         else:
             self.logger.warning("⚠️ [VPS] 未获取到今日场内份额数据 (可能VPS采集失败或今天非交易日)。")
 
+    def _step10_calculate_static_valuation(self):
+        """步骤十：基于同步后的因子数据，计算所有基金的静态估值 (static_val)"""
+        scripts_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(scripts_dir, 'lof_config.yaml')
+        if not os.path.exists(config_path):
+            self.logger.warning("⚠️ [静态估值] lof_config.yaml 不存在，跳过")
+            return
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        calc = StaticValuationCalculator(self.db)
+        success = 0
+        for fund in config.get('funds', []):
+            if not fund.get('valuation_portfolio') and not fund.get('hedging_portfolio'):
+                continue  # 跳过无估值配置的基金（如白银期货）
+            try:
+                if calc.process_fund(fund):
+                    success += 1
+            except Exception as e:
+                self.logger.error(f"  ❌ [{fund.get('code')}] 静态估值计算失败: {e}")
+        self.logger.info(f"✅ [静态估值] 计算完成，{success}/{len(config.get('funds', []))} 只基金已更新")
+
     def run(self, nav_only=False, refresh_morning=False):
         today_str = datetime.now().strftime('%Y-%m-%d')
         now = datetime.now()
@@ -787,6 +809,7 @@ class DailyUpdater(BaseApp):
         self.step7_fetch_extra_calibrations()
         self.step8_fetch_sina_futures_from_vps()
         self.step9_fetch_jsl_shares_from_vps()
+        self._step10_calculate_static_valuation()
         self.logger.info("🎉 流水线执行完毕，数据大盘一切就绪！")
 
 if __name__ == "__main__":
